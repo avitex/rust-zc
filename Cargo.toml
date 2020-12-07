@@ -1,0 +1,31 @@
+[package]
+name = "zc"
+version = "0.1.0"
+authors = ["avitex <avitex@wfxlabs.com>"]
+edition = "2018"
+description = "Zero-copy structure"
+categories = ["no-std", "data-structures"]
+documentation = "https://docs.rs/zc"
+homepage = "https://github.com/avitex/rust-zc"
+repository = "https://github.com/avitex/rust-zc"
+license = "MIT"
+readme = "README.md"
+include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
+
+[features]
+default = ["alloc"]
+alloc = []
+
+[dependencies]
+aliasable = "0.1"
+zc-derive = { version = "0.1", path = "./zc-derive" }
+
+[dev-dependencies]
+trybuild = "1.0"
+dangerous = "0.5"
+
+[workspace]
+members = [
+    ".",
+    "./zc-derive",
+]
