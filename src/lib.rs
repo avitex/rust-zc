@@ -6,7 +6,7 @@
     rust_2018_idioms,
     anonymous_parameters,
     unused_qualifications,
-    // missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -17,7 +17,6 @@
 )]
 
 use core::ops::Deref;
-use core::pin::Pin;
 use core::{fmt, mem};
 
 #[cfg(feature = "alloc")]
@@ -26,7 +25,7 @@ pub use zc_derive::Dependant;
 
 /// A zero-copy structure consisting of an [`Owner`] and a [`Dependant`].
 pub struct Zc<O: Owner, D> {
-    owner: Pin<O::Storage>,
+    owner: O::Storage,
     value: D,
 }
 
@@ -35,30 +34,27 @@ where
     O: Owner,
     D: Dependant<'static> + 'static,
 {
-    /// Construct a new zero-copied structure given a pinned [`Owner`] and a
+    /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
     ///
     /// # Example
     /// ```
     /// use zc::{Zc, Dependant};
-    /// use core::pin::Pin;
     ///
     /// #[derive(Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
-    /// let owner = Pin::new(vec![1, 2, 3]);
+    /// let owner = vec![1, 2, 3];
     /// let _ = Zc::new(owner, |bytes| MyStruct(bytes));
     /// ```
-    pub fn new<'t, T, F>(owner: Pin<O>, f: F) -> Self
+    pub fn new<'t, T, F>(owner: O, f: F) -> Self
     where
         F: FnOnce(&'t <O::Storage as Deref>::Target) -> T + 'static,
         T: Dependant<'t, Static = D>,
     {
         let owner = Owner::into_storage(owner);
-        // Get a reference to the deref target of the owner.
-        let target_ref = owner.as_ref().get_ref();
         // Cast the target reference to a target pointer.
-        let target_ptr: *const <O::Storage as Deref>::Target = target_ref;
+        let target_ptr: *const <O::Storage as Deref>::Target = owner.deref();
         // Borrow the target from target ptr for a lifetime of 't.
         //
         // SAFETY: target is only borrowed for 't, which exists only
@@ -71,30 +67,28 @@ where
         Self::from_raw_parts(owner, temporary)
     }
 
-    /// Construct a new zero-copied structure given a pinned [`Owner`] and a
+    /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
     ///
     /// # Example
     /// ```
     /// use zc::{Zc, Dependant};
-    /// use core::pin::Pin;
     ///
     /// #[derive(Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
-    /// let owner = Pin::new(vec![1, 2, 3]);
+    /// let owner = vec![1, 2, 3];
     /// let _ = Zc::new(owner, |bytes| MyStruct(bytes));
     /// ```
-    pub fn try_new<'t, T, E, F>(owner: Pin<O>, f: F) -> Result<Self, (E, Pin<O>)>
+    pub fn try_new<'t, T, E, F>(owner: O, f: F) -> Result<Self, (E, O)>
     where
+        E: 'static,
         F: FnOnce(&'t <O::Storage as Deref>::Target) -> Result<T, E> + 'static,
         T: Dependant<'t, Static = D>,
     {
         let owner = Owner::into_storage(owner);
-        // Get a reference to the deref target of the owner.
-        let target_ref = owner.as_ref().get_ref();
         // Cast the target reference to a target pointer.
-        let target_ptr: *const <O::Storage as Deref>::Target = target_ref;
+        let target_ptr: *const <O::Storage as Deref>::Target = owner.deref();
         // Borrow the target from target ptr for a lifetime of 't.
         //
         // SAFETY: target is only borrowed for 't, which exists only
@@ -106,58 +100,6 @@ where
             Ok(temporary) => Ok(Self::from_raw_parts(owner, temporary)),
             Err(err) => Err((err, Owner::from_storage(owner))),
         }
-    }
-
-    /// Construct a new zero-copied structure given an [`Owner`] and a
-    /// function for constructing the [`Dependant`].
-    ///
-    /// This is a convenience function over `Self::new(..)`.
-    ///
-    /// # Example
-    /// ```
-    /// use zc::{Zc, Dependant};
-    ///
-    /// #[derive(Dependant)]
-    /// struct MyStruct<'a>(&'a [u8]);
-    ///
-    /// let owner = vec![1, 2, 3];
-    /// let _ = Zc::pin(owner, |bytes| MyStruct(bytes));
-    /// ```
-    ///
-    /// # Errors
-    ///
-    pub fn pin<'t, T, F>(owner: O, f: F) -> Self
-    where
-        O::Target: Unpin,
-        F: FnOnce(&'t <O::Storage as Deref>::Target) -> T + 'static,
-        T: Dependant<'t, Static = D>,
-    {
-        Self::new(Pin::new(owner), f)
-    }
-
-    /// Try construct a new zero-copied structure given an [`Owner`] and a
-    /// function for constructing the [`Dependant`].
-    ///
-    /// This is a convenience function over `Self::try_new(..)`.
-    ///
-    /// # Example
-    /// ```
-    /// use zc::{Zc, Dependant};
-    ///
-    /// #[derive(Dependant)]
-    /// struct MyStruct<'a>(&'a [u8]);
-    ///
-    /// let owner = vec![1, 2, 3];
-    /// let result: Result<_, ((), _)> = Zc::try_pin(owner, |bytes| Ok(MyStruct(bytes)));
-    /// assert!(result.is_ok());
-    /// ```
-    pub fn try_pin<'t, T, E, F>(owner: O, f: F) -> Result<Self, (E, O)>
-    where
-        O::Target: Unpin,
-        F: FnOnce(&'t <O::Storage as Deref>::Target) -> Result<T, E> + 'static,
-        T: Dependant<'t, Static = D>,
-    {
-        Self::try_new(Pin::new(owner), f).map_err(|(err, owner)| (err, Pin::into_inner(owner)))
     }
 
     /// Return a reference to the [`Dependant`].
@@ -173,7 +115,7 @@ where
     /// struct MyStruct<'a>(&'a [u8]);
     ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::pin(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
     ///
     /// assert_eq!(
     ///     data.dependant::<MyStruct>(),
@@ -197,7 +139,7 @@ where
     /// struct MyStruct<'a>(&'a [u8]);
     ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::pin(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
     ///
     /// assert_eq!(data.owned(), &[1, 2, 3]);
     /// ```
@@ -205,26 +147,25 @@ where
         &*self.owner
     }
 
-    /// Consumes `self` into the pinned [`Owner`].
+    /// Consumes `self` into the [`Owner`].
     ///
     /// # Example
     /// ```
     /// use zc::{Zc, Dependant};
-    /// use core::pin::Pin;
     ///
     /// #[derive(Debug, PartialEq, Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::pin(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
     ///
-    /// assert_eq!(data.into_owner(), Pin::new(vec![1, 2, 3]));
+    /// assert_eq!(data.into_owner(), vec![1, 2, 3]);
     /// ```
-    pub fn into_owner(self) -> Pin<O> {
+    pub fn into_owner(self) -> O {
         Owner::from_storage(self.owner)
     }
 
-    fn from_raw_parts<'t, T>(owner: Pin<O::Storage>, temporary: T) -> Self
+    fn from_raw_parts<'t, T>(owner: O::Storage, temporary: T) -> Self
     where
         T: Dependant<'t, Static = D>,
     {
@@ -276,35 +217,67 @@ pub unsafe trait Dependant<'a>: Sized {
     unsafe fn transmute_into_static(self) -> Self::Static;
 }
 
-pub unsafe trait Storage: Sized + Deref + 'static {}
-
-pub unsafe trait Owner: Sized + Deref + 'static {
+/// Represents the owner of data with an associated storage type.
+///
+/// An `Owner` is a convenience trait that can be implemented without the need
+/// of `unsafe` that returns a [`Storage`] that does require an `unsafe`
+/// implementation. See the notes on [`Storage`] to see why this it is required.
+pub trait Owner: Sized + 'static {
+    /// The [`Storage`] type the owner uses.
     type Storage: Storage;
 
-    fn into_storage(this: Pin<Self>) -> Pin<Self::Storage>;
+    /// Consumes the `Owner` into the associated [`Storage`] type.
+    fn into_storage(self) -> Self::Storage;
 
-    fn from_storage(storage: Pin<Self::Storage>) -> Pin<Self>;
+    /// Consumes the associated [`Storage`] into the `Owner` type.
+    fn from_storage(storage: Self::Storage) -> Self;
 }
 
-unsafe impl<T> Owner for T
+/// Implemented for types that can safely give a stable, aliasable reference to
+/// data they own.
+///
+/// # `noalias`
+///
+/// The pointers behind common allocation types (`Box<T>`, `Vec<T>`, etc), are
+/// stored via `core::ptr::Unique<T>`, which passes to the compilier a `noalias`
+/// attribute. This attribute allows the compiler to make optimisations with the
+/// guarantee that no other pointers are referencing the same data.
+///
+/// We want to both own the data and pass a reference to it which can break with
+/// some of the optimisations the compiler can make. To achieve this, we need to
+/// remove the `noalias` attribute of the underlying pointer to let the compiler
+/// know that there will exist multiple pointers referencing the same owned
+/// data, which is also known as aliasing.
+///
+/// # Safety
+///
+/// The implementer must guarantee that the reference it provides via [`Deref`]
+/// will be **both stable and aliasable** for the lifetime of `self`. Stable in
+/// this context meaning that the pointer to the data referenced will not
+/// change.
+///
+/// `Box<T>` provides a stable pointer (the location of the data being pointed
+/// to will not change) but is not aliasable (see `noalias` above). Instead we
+/// can use the basic wrapper types provided by the [`aliasable`] crate.
+pub unsafe trait Storage: Sized + Deref + 'static {}
+
+impl<T> Owner for T
 where
     T: Storage,
 {
     type Storage = T;
 
-    fn into_storage(this: Pin<Self>) -> Pin<Self::Storage> {
-        this
+    fn into_storage(self) -> Self::Storage {
+        self
     }
 
-    fn from_storage(storage: Pin<Self::Storage>) -> Pin<Self> {
+    fn from_storage(storage: Self::Storage) -> Self {
         storage
     }
 }
 
 #[cfg(feature = "alloc")]
 mod alloc {
-    use core::pin::Pin;
-
     use aliasable::{
         boxed::AliasableBox,
         string::{AliasableString, UniqueString},
@@ -317,27 +290,27 @@ mod alloc {
     unsafe impl<T: 'static> Storage for AliasableVec<T> {}
     unsafe impl<T: ?Sized + 'static> Storage for AliasableBox<T> {}
 
-    unsafe impl Owner for UniqueString {
+    impl Owner for UniqueString {
         type Storage = AliasableString;
 
-        fn into_storage(this: Pin<Self>) -> Pin<Self::Storage> {
-            Self::Storage::from_unique_pin(this)
+        fn into_storage(self) -> Self::Storage {
+            Self::Storage::from_unique(self)
         }
 
-        fn from_storage(storage: Pin<Self::Storage>) -> Pin<Self> {
-            Self::Storage::into_unique_pin(storage)
+        fn from_storage(storage: Self::Storage) -> Self {
+            Self::Storage::into_unique(storage)
         }
     }
 
-    unsafe impl<T: 'static> Owner for UniqueVec<T> {
+    impl<T: 'static> Owner for UniqueVec<T> {
         type Storage = AliasableVec<T>;
 
-        fn into_storage(this: Pin<Self>) -> Pin<Self::Storage> {
-            Self::Storage::from_unique_pin(this)
+        fn into_storage(self) -> Self::Storage {
+            Self::Storage::from_unique(self)
         }
 
-        fn from_storage(storage: Pin<Self::Storage>) -> Pin<Self> {
-            Self::Storage::into_unique_pin(storage)
+        fn from_storage(storage: Self::Storage) -> Self {
+            Self::Storage::into_unique(storage)
         }
     }
 }

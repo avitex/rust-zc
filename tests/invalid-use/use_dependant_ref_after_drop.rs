@@ -5,7 +5,7 @@ pub struct MyStruct<'a>(&'a [u8]);
 
 fn main() {
     let owner = vec![1, 2, 3];
-    let data = Zc::pin(owner, |bytes| MyStruct(&bytes));
+    let data = Zc::new(owner, |bytes| MyStruct(&bytes));
     let dependant_ref = data.dependant::<MyStruct>();
     core::mem::drop(data);
     assert_eq!(

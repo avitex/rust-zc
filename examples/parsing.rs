@@ -7,7 +7,7 @@ pub struct ParsedResult<'a>(Result<Vec<&'a str>, Expected<'a>>);
 fn main() {
     let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
 
-    let parsed: Zc<Vec<u8>, ParsedResult> = Zc::pin(buf, |bytes| {
+    let parsed: Zc<Vec<u8>, ParsedResult> = Zc::new(buf, |bytes| {
         let input = dangerous::input(bytes);
         let result = input.read_all(parse);
         ParsedResult(result)

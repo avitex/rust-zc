@@ -1,7 +1,7 @@
 error[E0373]: closure may outlive the current function, but it borrows `other`, which is owned by the current function
  --> $DIR/non_static_ref_into_f.rs:9:28
   |
-9 |     let _ = Zc::pin(owner, |_| MyStruct(&other[..]));
+9 |     let _ = Zc::new(owner, |_| MyStruct(&other[..]));
   |                            ^^^           ----- `other` is borrowed here
   |                            |
   |                            may outlive borrowed value `other`
@@ -9,9 +9,9 @@ error[E0373]: closure may outlive the current function, but it borrows `other`, 
 note: function requires argument type to outlive `'static`
  --> $DIR/non_static_ref_into_f.rs:9:13
   |
-9 |     let _ = Zc::pin(owner, |_| MyStruct(&other[..]));
+9 |     let _ = Zc::new(owner, |_| MyStruct(&other[..]));
   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to force the closure to take ownership of `other` (and any other referenced variables), use the `move` keyword
   |
-9 |     let _ = Zc::pin(owner, move |_| MyStruct(&other[..]));
+9 |     let _ = Zc::new(owner, move |_| MyStruct(&other[..]));
   |                            ^^^^^^^^

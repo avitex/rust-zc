@@ -12,7 +12,7 @@ pub struct StructWithBytes<'a>(&'a [u8]);
 #[test]
 fn test_struct_with_bytes() {
     let owner = vec![1, 2, 3];
-    let data = Zc::pin(owner, |bytes| StructWithBytes(&bytes[1..]));
+    let data = Zc::new(owner, |bytes| StructWithBytes(&bytes[1..]));
 
     assert_eq!(
         data.dependant::<StructWithBytes>(),
