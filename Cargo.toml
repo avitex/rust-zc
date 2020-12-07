@@ -17,7 +17,7 @@ default = ["alloc"]
 alloc = []
 
 [dependencies]
-aliasable = "0.1"
+aliasable = { git = "http://github.com/avitex/rust-aliasable" }
 zc-derive = { version = "0.1", path = "./zc-derive" }
 
 [dev-dependencies]
