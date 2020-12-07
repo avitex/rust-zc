@@ -19,9 +19,3 @@ fn test_struct_with_bytes() {
         &StructWithBytes(&[2, 3])
     )
 }
-
-#[test]
-fn invalid_use() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("tests/invalid-use/*.rs");
-}
