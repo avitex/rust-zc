@@ -1,0 +1,9 @@
+error[E0277]: `RefCell<&'static [u8]>` cannot be shared between threads safely
+ --> $DIR/dependant_interior_mut.rs:5:28
+  |
+5 | #[derive(PartialEq, Debug, Dependant)]
+  |                            ^^^^^^^^^ `RefCell<&'static [u8]>` cannot be shared between threads safely
+  |
+  = help: within `StructWithBytes<'static>`, the trait `Sync` is not implemented for `RefCell<&'static [u8]>`
+  = note: required because it appears within the type `StructWithBytes<'static>`
+  = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
