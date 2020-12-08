@@ -1,15 +1,15 @@
-#[rustversion::since(1.49)]
+#[rustversion::not(nightly)]
 #[test]
-fn invalid_use_since_1_49() {
+fn invalid_use_stable() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/invalid-use/*.rs");
-    t.compile_fail("tests/invalid-use/since-1-49/*.rs");
+    t.compile_fail("tests/invalid-use/stable/*.rs");
 }
 
-#[rustversion::before(1.49)]
+#[rustversion::nightly]
 #[test]
-fn invalid_use_before_1_49() {
+fn invalid_use_nightly() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/invalid-use/*.rs");
-    t.compile_fail("tests/invalid-use/before-1-49/*.rs");
+    t.compile_fail("tests/invalid-use/nightly/*.rs");
 }

@@ -20,7 +20,6 @@ script:
   - cargo clean
   - cargo build
   - cargo test
-  - cargo test --no-default-features
   - |
     if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
       cargo fmt -- --check
