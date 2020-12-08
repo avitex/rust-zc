@@ -5,7 +5,7 @@
 
 # rust-zc
 
-**Rust library for zero-copy data**  
+**Rust library providing `Zc` for self-referential zero-copy structures.**  
 Documentation hosted on [docs.rs](https://docs.rs/zc).
 
 ```toml
