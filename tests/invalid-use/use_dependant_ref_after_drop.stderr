@@ -1,12 +1,12 @@
 error[E0505]: cannot move out of `data` because it is borrowed
-  --> $DIR/use_dependant_ref_after_drop.rs:10:21
+  --> $DIR/use_dependant_ref_after_drop.rs:16:21
    |
-9  |       let dependant_ref = data.dependant::<MyStruct>();
+15 |       let dependant_ref = data.dependant::<MyStruct>();
    |                           ---- borrow of `data` occurs here
-10 |       core::mem::drop(data);
+16 |       core::mem::drop(data);
    |                       ^^^^ move out of `data` occurs here
-11 | /     assert_eq!(
-12 | |         dependant_ref,
-13 | |         &MyStruct(&[1, 2, 3])
-14 | |     )
+17 | /     assert_eq!(
+18 | |         dependant_ref,
+19 | |         &MyStruct(&[1, 2, 3])
+20 | |     )
    | |_____- borrow later used here

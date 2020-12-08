@@ -1,0 +1,26 @@
+error: implementation of `zc::private::Construct` is not general enough
+   --> $DIR/steal_owned_data.rs:17:13
+    |
+17  |       let _ = Zc::new(owner, steal_owned_data);
+    |               ^^^^^^^ doesn't satisfy where-clause
+    |
+   ::: $WORKSPACE/src/lib.rs
+    |
+    | /     pub fn new<C>(owner: O, constructor: C) -> Self
+107 | |     where
+108 | |         C: for<'o> Construct<'o, <O::Storage as Deref>::Target, Dependant = D>,
+109 | |     {
+...   |
+114 | |         Self { storage, value }
+115 | |     }
+    | |_____- due to a where-clause on `Zc::<O, D>::new`...
+...
+375 | /     pub unsafe trait Construct<'o, O: ?Sized>: Sized {
+376 | |         type Dependant: Dependant<'static>;
+377 | |
+378 | |         unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
+379 | |     }
+    | |_____- trait `zc::private::Construct` defined here
+    |
+    = note: ...`fn(&'static [u8]) -> MyStruct<'static> {steal_owned_data}` must implement `zc::private::Construct<'0, [u8]>`, for any lifetime `'0`...
+    = note: ...but `fn(&'static [u8]) -> MyStruct<'static> {steal_owned_data}` actually implements `zc::private::Construct<'1, [u8]>`, for some specific lifetime `'1`

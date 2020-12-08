@@ -23,9 +23,59 @@ use core::{fmt, mem};
 pub use aliasable;
 pub use zc_derive::Dependant;
 
+use self::private::{Construct, TryConstruct};
+
+/// A convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
+/// [`From`].
+///
+/// See [`Zc::new()`] for an example.
+///
+/// This macro creates an intermediate function to annotate the lifetime
+/// required for the `Construct` trait as the compiler is not smart enough yet
+/// to infer it for us. See issues [22340] and [70263].
+///
+/// [22340]: https://github.com/rust-lang/rust/issues/22340
+/// [70263]: https://github.com/rust-lang/rust/issues/70263
+// FIXME: remove this
+#[macro_export]
+macro_rules! from {
+    ($owner:expr, $dependant:ident, $target:ty) => {{
+        fn _new_fn(arg: &$target) -> $dependant<'_> {
+            $dependant::from(arg)
+        }
+        zc::Zc::new($owner, _new_fn)
+    }};
+}
+
+/// A convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
+/// [`TryFrom`].
+///
+/// See [`Zc::try_new()`] for an example.
+///
+/// This macro creates an intermediate function to annotate the lifetime
+/// required for the `Construct` trait as the compiler is not smart enough yet
+/// to infer it for us. See issues [22340] and [70263].
+///
+/// [22340]: https://github.com/rust-lang/rust/issues/22340
+/// [70263]: https://github.com/rust-lang/rust/issues/70263
+/// [`TryFrom`]: core::convert::TryFrom
+// FIXME: remove this
+#[macro_export]
+macro_rules! try_from {
+    ($owner:expr, $dependant:ident, $target:ty) => {{
+        fn _new_fn(
+            arg: &$target,
+        ) -> Result<$dependant<'_>, <$dependant as core::convert::TryFrom<&$target>>::Error>
+        {
+            <$dependant as core::convert::TryFrom<&$target>>::try_from(arg)
+        }
+        zc::Zc::try_new($owner, _new_fn)
+    }};
+}
+
 /// A zero-copy structure consisting of an [`Owner`] and a [`Dependant`].
 pub struct Zc<O: Owner, D> {
-    owner: O::Storage,
+    storage: O::Storage,
     value: D,
 }
 
@@ -44,27 +94,24 @@ where
     /// #[derive(Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
+    /// impl<'a> From<&'a [u8]> for MyStruct<'a> {
+    ///     fn from(bytes: &'a [u8]) -> Self {
+    ///         Self(&bytes[1..])
+    ///     }
+    /// }
+    ///
     /// let owner = vec![1, 2, 3];
-    /// let _ = Zc::new(owner, |bytes| MyStruct(bytes));
+    /// let _ = zc::from!(owner, MyStruct, [u8]);
     /// ```
-    pub fn new<'t, T, F>(owner: O, f: F) -> Self
+    pub fn new<C>(owner: O, constructor: C) -> Self
     where
-        F: FnOnce(&'t <O::Storage as Deref>::Target) -> T + 'static,
-        T: Dependant<'t, Static = D>,
+        C: for<'o> Construct<'o, <O::Storage as Deref>::Target, Dependant = D>,
     {
-        let owner = Owner::into_storage(owner);
-        // Cast the target reference to a target pointer.
-        let target_ptr: *const <O::Storage as Deref>::Target = owner.deref();
-        // Borrow the target from target ptr for a lifetime of 't.
-        //
-        // SAFETY: target is only borrowed for 't, which exists only
-        // within this scope. `F` is 'static disallowing any non-static
-        // references that could be used to break this guarantee.
-        let target_ref_reborrowed = unsafe { &*target_ptr };
+        let storage = Owner::into_storage(owner);
         // Create a temporary dependant given the target reference.
-        let temporary = f(target_ref_reborrowed);
+        let value = unsafe { constructor.construct(storage.deref()) };
         // Construct the zero-copy structure given the raw parts.
-        Self::from_raw_parts(owner, temporary)
+        Self { storage, value }
     }
 
     /// Construct a new zero-copied structure given an [`Owner`] and a
@@ -73,32 +120,32 @@ where
     /// # Example
     /// ```
     /// use zc::{Zc, Dependant};
+    /// use core::convert::TryFrom;
     ///
     /// #[derive(Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
+    /// impl<'a> TryFrom<&'a [u8]> for MyStruct<'a> {
+    ///     type Error = ();
+    ///
+    ///     fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
+    ///         Ok(Self(&bytes[1..]))
+    ///     }
+    /// }
+    ///
     /// let owner = vec![1, 2, 3];
-    /// let _ = Zc::new(owner, |bytes| MyStruct(bytes));
+    /// let _ = zc::try_from!(owner, MyStruct, [u8]);
     /// ```
-    pub fn try_new<'t, T, E, F>(owner: O, f: F) -> Result<Self, (E, O)>
+    pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
     where
         E: 'static,
-        F: FnOnce(&'t <O::Storage as Deref>::Target) -> Result<T, E> + 'static,
-        T: Dependant<'t, Static = D>,
+        C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
     {
-        let owner = Owner::into_storage(owner);
-        // Cast the target reference to a target pointer.
-        let target_ptr: *const <O::Storage as Deref>::Target = owner.deref();
-        // Borrow the target from target ptr for a lifetime of 't.
-        //
-        // SAFETY: target is only borrowed for 't, which exists only
-        // within this scope. `F` is 'static disallowing any non-static
-        // references that could be used to break this guarantee.
-        let target_ref_reborrowed = unsafe { &*target_ptr };
+        let storage = Owner::into_storage(owner);
         // Try create a temporary dependant given the target reference.
-        match f(target_ref_reborrowed) {
-            Ok(temporary) => Ok(Self::from_raw_parts(owner, temporary)),
-            Err(err) => Err((err, Owner::from_storage(owner))),
+        match unsafe { constructor.try_construct(storage.deref()) } {
+            Ok(value) => Ok(Self { storage, value }),
+            Err(err) => Err((err, Owner::from_storage(storage))),
         }
     }
 
@@ -114,14 +161,24 @@ where
     /// #[derive(Debug, PartialEq, Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
+    /// impl<'a> From<&'a [u8]> for MyStruct<'a> {
+    ///     fn from(bytes: &'a [u8]) -> Self {
+    ///         Self(&bytes[1..])
+    ///     }
+    /// }
+    ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = zc::from!(owner, MyStruct, [u8]);
     ///
     /// assert_eq!(
     ///     data.dependant::<MyStruct>(),
     ///     &MyStruct(&[2, 3])
     /// );
     /// ```
+    // FIXME: This interface isn't the nicest as you have to specific the
+    // dependant again to retrieve it. GATs should provide us a way to make this
+    // nicer with a generic associated lifetime.
+    // See: https://github.com/rust-lang/rust/issues/44265
     pub fn dependant<'a, T>(&'a self) -> &T
     where
         T: Dependant<'a, Static = D>,
@@ -138,13 +195,19 @@ where
     /// #[derive(Debug, PartialEq, Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
+    /// impl<'a> From<&'a [u8]> for MyStruct<'a> {
+    ///     fn from(bytes: &'a [u8]) -> Self {
+    ///         Self(&bytes[1..])
+    ///     }
+    /// }
+    ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = zc::from!(owner, MyStruct, [u8]);
     ///
     /// assert_eq!(data.owned(), &[1, 2, 3]);
     /// ```
     pub fn owned(&self) -> &<O::Storage as Deref>::Target {
-        &*self.owner
+        &*self.storage
     }
 
     /// Consumes `self` into the [`Owner`].
@@ -156,28 +219,19 @@ where
     /// #[derive(Debug, PartialEq, Dependant)]
     /// struct MyStruct<'a>(&'a [u8]);
     ///
+    /// impl<'a> From<&'a [u8]> for MyStruct<'a> {
+    ///     fn from(bytes: &'a [u8]) -> Self {
+    ///         Self(&bytes[1..])
+    ///     }
+    /// }
+    ///
     /// let owner = vec![1, 2, 3];
-    /// let data = Zc::new(owner, |bytes| MyStruct(&bytes[1..]));
+    /// let data = zc::from!(owner, MyStruct, [u8]);
     ///
     /// assert_eq!(data.into_owner(), vec![1, 2, 3]);
     /// ```
     pub fn into_owner(self) -> O {
-        Owner::from_storage(self.owner)
-    }
-
-    fn from_raw_parts<'t, T>(owner: O::Storage, temporary: T) -> Self
-    where
-        T: Dependant<'t, Static = D>,
-    {
-        // Remove the 't lifetime to store within `Zc`.
-        //
-        // SAFETY: `T` and `D` have the same structure guaranteed by the
-        // `Dependant` trait impl. References to the dependant are only
-        // safely accessible for public use via `Self::dependant(&self)`,
-        // which transmutes the dependant back to a non static lifetime.
-        let value = unsafe { temporary.transmute_into_static() };
-        // Return the owner and the dependant.
-        Self { owner, value }
+        Owner::from_storage(self.storage)
     }
 }
 
@@ -189,7 +243,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Zc")
-            .field("owner", &self.owner)
+            .field("storage", &self.storage)
             .field("value", &self.value)
             .finish()
     }
@@ -311,6 +365,51 @@ mod alloc {
 
         fn from_storage(storage: Self::Storage) -> Self {
             Self::Storage::into_unique(storage)
+        }
+    }
+}
+
+mod private {
+    use crate::Dependant;
+
+    pub unsafe trait Construct<'o, O: ?Sized>: Sized {
+        type Dependant: Dependant<'static>;
+
+        unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
+    }
+
+    unsafe impl<'o, O, D, F> Construct<'o, O> for F
+    where
+        O: ?Sized + 'o,
+        D: Dependant<'o>,
+        F: FnOnce(&'o O) -> D + 'static,
+    {
+        type Dependant = D::Static;
+
+        unsafe fn construct(self, owned: &'o O) -> Self::Dependant {
+            (self)(owned).transmute_into_static()
+        }
+    }
+
+    pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+        type Error: 'static;
+        type Dependant: Dependant<'static>;
+
+        unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+    }
+
+    unsafe impl<'o, O, D, E, F> TryConstruct<'o, O> for F
+    where
+        E: 'static,
+        O: ?Sized + 'o,
+        D: Dependant<'o>,
+        F: FnOnce(&'o O) -> Result<D, E> + 'static,
+    {
+        type Error = E;
+        type Dependant = D::Static;
+
+        unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error> {
+            (self)(owned).map(|d| d.transmute_into_static())
         }
     }
 }

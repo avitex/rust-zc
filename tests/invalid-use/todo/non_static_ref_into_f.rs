@@ -1,4 +1,4 @@
-use zc::{Dependant, Zc};
+use zc::Dependant;
 
 #[derive(Dependant)]
 pub struct MyStruct<'a>(&'a [u8]);
@@ -6,5 +6,5 @@ pub struct MyStruct<'a>(&'a [u8]);
 fn main() {
     let owner = vec![1, 2, 3];
     let other = vec![1, 2, 3];
-    let _ = Zc::new(owner, |_| MyStruct(&other[..]));
+    let _ = zc::new!(owner, |_| MyStruct(&other[..]));
 }

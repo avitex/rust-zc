@@ -1,18 +1,20 @@
 use dangerous::{Expected, Reader};
-use zc::{Dependant, Zc};
+use zc::Dependant;
 
 #[derive(Dependant, Debug)]
 pub struct ParsedResult<'a>(Result<Vec<&'a str>, Expected<'a>>);
 
-fn main() {
-    let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
-
-    let parsed: Zc<Vec<u8>, ParsedResult> = Zc::new(buf, |bytes| {
+impl<'a> From<&'a [u8]> for ParsedResult<'a> {
+    fn from(bytes: &'a [u8]) -> Self {
         let input = dangerous::input(bytes);
         let result = input.read_all(parse);
-        ParsedResult(result)
-    });
+        Self(result)
+    }
+}
 
+fn main() {
+    let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
+    let parsed = zc::from!(buf, ParsedResult, [u8]);
     dbg!(parsed);
 }
 
