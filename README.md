@@ -11,3 +11,28 @@ Documentation hosted on [docs.rs](https://docs.rs/zc).
 ```toml
 zc = "0.1"
 ```
+
+## Usage
+
+```rust
+use zc::Dependant;
+
+#[derive(PartialEq, Debug, Dependant)]
+pub struct StructWithBytes<'a>(&'a [u8]);
+
+impl<'a> From<&'a [u8]> for StructWithBytes<'a> {
+    fn from(bytes: &'a [u8]) -> Self {
+        Self(&bytes[1..])
+    }
+}
+
+fn main() {
+    let owner = vec![1, 2, 3];
+    let data = zc::from!(owner, StructWithBytes, [u8]);
+
+    assert_eq!(
+        data.dependant::<StructWithBytes>(),
+        &StructWithBytes(&[2, 3])
+    )
+}
+```
