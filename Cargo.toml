@@ -14,11 +14,11 @@ include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "C
 
 [features]
 default = ["alloc"]
-alloc = []
+alloc = ["aliasable"]
 
 [dependencies]
-aliasable = { git = "http://github.com/avitex/rust-aliasable" }
 zc-derive = { version = "0.1", path = "./zc-derive" }
+aliasable = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 trybuild = "1.0"
