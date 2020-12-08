@@ -1,4 +1,4 @@
-//! Zero-copy structure
+//! Crate providing [`Zc`] for self-referential zero-copy structures.
 
 #![no_std]
 #![forbid(
@@ -36,7 +36,7 @@ use self::private::{Construct, TryConstruct};
 ///
 /// [22340]: https://github.com/rust-lang/rust/issues/22340
 /// [70263]: https://github.com/rust-lang/rust/issues/70263
-// FIXME: remove this
+// FIXME: Remove this
 #[macro_export]
 macro_rules! from {
     ($owner:expr, $dependant:ident, $target:ty) => {{
@@ -59,7 +59,7 @@ macro_rules! from {
 /// [22340]: https://github.com/rust-lang/rust/issues/22340
 /// [70263]: https://github.com/rust-lang/rust/issues/70263
 /// [`TryFrom`]: core::convert::TryFrom
-// FIXME: remove this
+// FIXME: Remove this
 #[macro_export]
 macro_rules! try_from {
     ($owner:expr, $dependant:ident, $target:ty) => {{
