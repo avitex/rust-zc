@@ -40,6 +40,11 @@ fn test_struct_with_bytes_from() {
         data.dependant::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
     );
+
+    assert_eq!(
+        format!("{:?}", data),
+        "Zc { storage: [1, 2, 3], value: StructWithBytes([2, 3]) }"
+    );
 }
 
 #[test]
@@ -104,4 +109,5 @@ fn test_aliasable_box() {
     let data = zc::from!(owner, StructWithBoxRef, u8);
 
     assert_eq!(data.dependant::<StructWithBoxRef>(), &StructWithBoxRef(&1));
+    assert_eq!(AliasableBox::into_unique(data.into_owner()), Box::new(1));
 }
