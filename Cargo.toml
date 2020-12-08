@@ -1,6 +1,6 @@
 [package]
 name = "zc"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["avitex <avitex@wfxlabs.com>"]
 edition = "2018"
 description = "Self-referential zero-copy structure"
