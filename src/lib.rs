@@ -292,8 +292,8 @@ pub trait Owner: Sized + 'static {
     fn from_storage(storage: Self::Storage) -> Self;
 }
 
-/// Implemented for types that can safely give a stable, aliasable reference to
-/// data they own.
+/// Implemented for types that can safely provide a stable, aliasable
+/// reference to data they own.
 ///
 /// # `noalias`
 ///
