@@ -1,3 +1,4 @@
+use zc::aliasable::boxed::AliasableBox;
 use zc::{Dependant, Zc};
 
 #[derive(Dependant)]
@@ -27,7 +28,7 @@ fn test_struct_with_bytes_construct() {
     assert_eq!(
         data.dependant::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
-    )
+    );
 }
 
 #[test]
@@ -38,5 +39,69 @@ fn test_struct_with_bytes_from() {
     assert_eq!(
         data.dependant::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
-    )
+    );
+}
+
+#[test]
+fn test_struct_with_bytes_try_from() {
+    let owner = vec![1, 2, 3];
+    let data = zc::try_from!(owner, StructWithBytes, [u8]).unwrap();
+
+    assert_eq!(
+        data.dependant::<StructWithBytes>(),
+        &StructWithBytes(&[2, 3])
+    );
+}
+
+#[test]
+fn test_struct_with_str_from() {
+    #[derive(PartialEq, Debug, Dependant)]
+    pub struct StructWithStr<'a>(&'a str);
+
+    impl<'a> From<&'a str> for StructWithStr<'a> {
+        fn from(s: &'a str) -> Self {
+            Self(&s[1..])
+        }
+    }
+
+    let owner = String::from("hello");
+    let data = zc::from!(owner, StructWithStr, str);
+
+    assert_eq!(data.dependant::<StructWithStr>(), &StructWithStr("ello"));
+}
+
+#[test]
+fn test_struct_with_error() {
+    #[derive(PartialEq, Debug, Dependant)]
+    pub struct StructWithError<'a>(&'a str);
+
+    impl<'a> core::convert::TryFrom<&'a str> for StructWithError<'a> {
+        type Error = ();
+
+        fn try_from(_: &'a str) -> Result<Self, Self::Error> {
+            Err(())
+        }
+    }
+
+    let owner = String::from("hello");
+    let result = zc::try_from!(owner, StructWithError, str);
+
+    assert_eq!(result.unwrap_err(), ((), String::from("hello")));
+}
+
+#[test]
+fn test_aliasable_box() {
+    #[derive(PartialEq, Debug, Dependant)]
+    pub struct StructWithBoxRef<'a>(&'a u8);
+
+    impl<'a> From<&'a u8> for StructWithBoxRef<'a> {
+        fn from(v: &'a u8) -> Self {
+            Self(v)
+        }
+    }
+
+    let owner = AliasableBox::from(Box::new(1u8));
+    let data = zc::from!(owner, StructWithBoxRef, u8);
+
+    assert_eq!(data.dependant::<StructWithBoxRef>(), &StructWithBoxRef(&1));
 }
