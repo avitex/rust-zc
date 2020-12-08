@@ -256,6 +256,8 @@ where
 
 /// `Dependant` is implemented for types that use data provided by an [`Owner`].
 ///
+/// `Sync` is required to prevent interior mutablity.
+///
 /// # Implementation
 ///
 /// Do not implement this manually and instead use the provided proc-macro as show below.
@@ -268,7 +270,7 @@ where
 ///     value: &'a str,
 /// }
 /// ```
-pub unsafe trait Dependant<'a>: Sized {
+pub unsafe trait Dependant<'a>: Sized + Sync {
     /// Always the exact same structure as `Self` but instead with a `'static` lifetime.
     type Static: Dependant<'static>;
 

@@ -1,0 +1,14 @@
+error[E0277]: `RefCell<&'a [u8]>` cannot be shared between threads safely
+   --> $DIR/dependant_interior_mut.rs:5:28
+    |
+5   | #[derive(PartialEq, Debug, Dependant)]
+    |                            ^^^^^^^^^ `RefCell<&'a [u8]>` cannot be shared between threads safely
+    |
+   ::: $WORKSPACE/src/lib.rs
+    |
+    | pub unsafe trait Dependant<'a>: Sized + Sync {
+    |                                         ---- required by this bound in `Dependant`
+    |
+    = help: within `StructWithBytes<'a>`, the trait `Sync` is not implemented for `RefCell<&'a [u8]>`
+    = note: required because it appears within the type `StructWithBytes<'a>`
+    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)

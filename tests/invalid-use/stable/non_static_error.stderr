@@ -15,12 +15,12 @@ error: implementation of `zc::private::TryConstruct` is not general enough
 155 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::try_new`...
 ...
-399 | /     pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
-400 | |         type Error: 'static;
-401 | |         type Dependant: Dependant<'static>;
-402 | |
-403 | |         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
-404 | |     }
+401 | /     pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+402 | |         type Error: 'static;
+403 | |         type Dependant: Dependant<'static>;
+404 | |
+405 | |         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+406 | |     }
     | |_____- trait `zc::private::TryConstruct` defined here
     |
     = note: ...`for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` must implement `zc::private::TryConstruct<'0, [u8]>`, for any lifetime `'0`...

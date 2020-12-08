@@ -1,8 +1,8 @@
-use dangerous::{Expected, Reader};
+use dangerous::{Fatal, Reader};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]
-pub struct ParsedResult<'a>(Result<Vec<&'a str>, Expected<'a>>);
+pub struct ParsedResult<'a>(Result<Vec<&'a str>, Fatal>);
 
 impl<'a> From<&'a [u8]> for ParsedResult<'a> {
     fn from(bytes: &'a [u8]) -> Self {

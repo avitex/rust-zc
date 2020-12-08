@@ -15,11 +15,11 @@ error: implementation of `zc::private::Construct` is not general enough
 117 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::new`...
 ...
-380 | /     pub unsafe trait Construct<'o, O: ?Sized>: Sized {
-381 | |         type Dependant: Dependant<'static>;
-382 | |
-383 | |         unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
-384 | |     }
+382 | /     pub unsafe trait Construct<'o, O: ?Sized>: Sized {
+383 | |         type Dependant: Dependant<'static>;
+384 | |
+385 | |         unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
+386 | |     }
     | |_____- trait `zc::private::Construct` defined here
     |
     = note: ...`fn(&'static [u8]) -> MyStruct<'static> {steal_owned_data}` must implement `zc::private::Construct<'0, [u8]>`, for any lifetime `'0`...
