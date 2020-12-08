@@ -16,8 +16,6 @@
     warnings
 )]
 
-mod private;
-
 use core::ops::Deref;
 use core::{fmt, mem};
 
@@ -55,8 +53,8 @@ macro_rules! from {
 /// See [`Zc::try_new()`] for an example.
 ///
 /// This macro creates an intermediate function to annotate the lifetime
-/// required for the `Construct` trait as the compiler is not smart enough yet
-/// to infer it for us. See issues [22340] and [70263].
+/// required for the `TryConstruct` trait as the compiler is not smart enough
+/// yet to infer it for us. See issues [22340] and [70263].
 ///
 /// [22340]: https://github.com/rust-lang/rust/issues/22340
 /// [70263]: https://github.com/rust-lang/rust/issues/70263
@@ -118,7 +116,7 @@ where
         Self { storage, value }
     }
 
-    /// Construct a new zero-copied structure given an [`Owner`] and a
+    /// Try construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
     ///
     /// # Example
@@ -140,6 +138,9 @@ where
     /// let owner = vec![1, 2, 3];
     /// let _ = zc::try_from!(owner, MyStruct, [u8]);
     /// ```
+    ///
+    /// # Errors
+    /// Returns `E` if the constructor failed.
     pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
     where
         E: 'static,
@@ -369,6 +370,51 @@ mod alloc {
 
         fn from_storage(storage: Self::Storage) -> Self {
             Self::Storage::into_unique(storage)
+        }
+    }
+}
+
+mod private {
+    use crate::Dependant;
+
+    pub unsafe trait Construct<'o, O: ?Sized>: Sized {
+        type Dependant: Dependant<'static>;
+
+        unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
+    }
+
+    unsafe impl<'o, O, D, F> Construct<'o, O> for F
+    where
+        O: ?Sized + 'o,
+        D: Dependant<'o>,
+        F: FnOnce(&'o O) -> D + 'static,
+    {
+        type Dependant = D::Static;
+
+        unsafe fn construct(self, owned: &'o O) -> Self::Dependant {
+            (self)(owned).transmute_into_static()
+        }
+    }
+
+    pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+        type Error: 'static;
+        type Dependant: Dependant<'static>;
+
+        unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+    }
+
+    unsafe impl<'o, O, D, E, F> TryConstruct<'o, O> for F
+    where
+        E: 'static,
+        O: ?Sized + 'o,
+        D: Dependant<'o>,
+        F: FnOnce(&'o O) -> Result<D, E> + 'static,
+    {
+        type Error = E;
+        type Dependant = D::Static;
+
+        unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error> {
+            (self)(owned).map(|d| d.transmute_into_static())
         }
     }
 }
