@@ -6,22 +6,19 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, Data, DeriveInput, GenericParam, Ident, Lifetime, LifetimeDef};
 
-#[proc_macro_derive(NoInteriorMut, attributes(zc))]
+#[proc_macro_derive(NoInteriorMut)]
 pub fn derive_no_interior_mut(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let derive_opts = match parse_derive_attrs(&input) {
-        Ok(opts) => opts,
-        Err(err) => return TokenStream::from(err),
-    };
-    let no_interior_mut_check = impl_no_interior_mut_check(&input, &derive_opts);
+    let no_interior_mut_check = impl_no_interior_mut_check(&input, false);
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let expanded = quote! {
-        impl #impl_generics for #name #ty_generics #where_clause {
+        impl #impl_generics #name #ty_generics #where_clause {
             fn _zc_no_interior_mut_check() {
                 #no_interior_mut_check
             }
         }
+        unsafe impl #impl_generics zc::NoInteriorMut for #name #ty_generics #where_clause {}
     };
     TokenStream::from(expanded)
 }
@@ -37,7 +34,8 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     };
     let mut static_generics = input.generics.clone();
     let mut dependant_generics = input.generics.clone();
-    let no_interior_mut_check = impl_no_interior_mut_check(&input, &derive_opts);
+    let no_interior_mut_check =
+        impl_no_interior_mut_check(&input, !derive_opts.no_interior_mut_impl);
     let static_lifetime = Lifetime::new("'static", Span::call_site());
     let dependant_lifetime = if lifetime_count == 0 {
         let dependant_lifetime = Lifetime::new("'a", Span::call_site());
@@ -81,9 +79,9 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     TokenStream::from(dependant_impl)
 }
 
-fn impl_no_interior_mut_check(input: &DeriveInput, opts: &DeriveOpts) -> TokenStream2 {
+fn impl_no_interior_mut_check(input: &DeriveInput, skip: bool) -> TokenStream2 {
     let mut checks = TokenStream2::new();
-    if !opts.no_interior_mut_impl {
+    if skip {
         return checks;
     }
     checks.extend(quote! {

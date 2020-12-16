@@ -1,11 +1,14 @@
 use zc::aliasable::boxed::AliasableBox;
-use zc::{Dependant, Zc};
+use zc::{Dependant, NoInteriorMut, Zc};
 
 #[derive(Dependant)]
 pub struct StructWithNoLifetime;
 
+#[derive(NoInteriorMut)]
+pub struct ChildType<'a>(&'a ());
+
 #[derive(Dependant)]
-pub struct StructWithOneLifetime<'a>(&'a ());
+pub struct StructWithOneLifetime<'a>(ChildType<'a>);
 
 #[derive(PartialEq, Debug, Dependant)]
 pub struct StructWithBytes<'a>(&'a [u8]);
