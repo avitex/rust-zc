@@ -16,12 +16,20 @@
     warnings
 )]
 
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+mod r#impl;
+
 use core::ops::Deref;
 use core::{fmt, mem};
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
-pub use zc_derive::Dependant;
+pub use zc_derive::{Dependant, NoInteriorMut};
 
 use self::private::{Construct, TryConstruct};
 
@@ -268,13 +276,25 @@ where
 ///     value: &'a str,
 /// }
 /// ```
-pub unsafe trait Dependant<'a>: Sized {
+pub unsafe trait Dependant<'a>: Sized + Guarded {
     /// Always the exact same structure as `Self` but instead with a `'static` lifetime.
     type Static: Dependant<'static>;
 
     #[doc(hidden)]
     unsafe fn transmute_into_static(self) -> Self::Static;
 }
+
+/// TODO
+pub unsafe trait Guarded {}
+
+unsafe impl<T> Guarded for T where T: NoInteriorMut {}
+
+/// Implemented for types that have no interior mutability.
+///
+/// # Safety
+/// Implementor must guarantee that the type does not have interior mutability
+/// (aka `Mutex<T>`).
+pub unsafe trait NoInteriorMut {}
 
 /// Represents the owner of data with an associated storage type.
 ///
@@ -319,60 +339,6 @@ pub trait Owner: Sized + 'static {
 /// to will not change) but is not aliasable (see `noalias` above). Instead we
 /// can use the basic wrapper types provided by the [`aliasable`] crate.
 pub unsafe trait Storage: Sized + Deref + 'static {}
-
-impl<T> Owner for T
-where
-    T: Storage,
-{
-    type Storage = T;
-
-    fn into_storage(self) -> Self::Storage {
-        self
-    }
-
-    fn from_storage(storage: Self::Storage) -> Self {
-        storage
-    }
-}
-
-#[cfg(feature = "alloc")]
-mod alloc {
-    use aliasable::{
-        boxed::AliasableBox,
-        string::{AliasableString, UniqueString},
-        vec::{AliasableVec, UniqueVec},
-    };
-
-    use crate::{Owner, Storage};
-
-    unsafe impl Storage for AliasableString {}
-    unsafe impl<T: 'static> Storage for AliasableVec<T> {}
-    unsafe impl<T: ?Sized + 'static> Storage for AliasableBox<T> {}
-
-    impl Owner for UniqueString {
-        type Storage = AliasableString;
-
-        fn into_storage(self) -> Self::Storage {
-            Self::Storage::from_unique(self)
-        }
-
-        fn from_storage(storage: Self::Storage) -> Self {
-            Self::Storage::into_unique(storage)
-        }
-    }
-
-    impl<T: 'static> Owner for UniqueVec<T> {
-        type Storage = AliasableVec<T>;
-
-        fn into_storage(self) -> Self::Storage {
-            Self::Storage::from_unique(self)
-        }
-
-        fn from_storage(storage: Self::Storage) -> Self {
-            Self::Storage::into_unique(storage)
-        }
-    }
-}
 
 mod private {
     use crate::Dependant;

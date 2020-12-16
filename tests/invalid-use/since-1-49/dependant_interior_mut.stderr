@@ -1,0 +1,7 @@
+error[E0277]: the trait bound `Mutex<&'a [u8]>: NoInteriorMut` is not satisfied
+ --> $DIR/dependant_interior_mut.rs:6:32
+  |
+5 | #[derive(Debug, Dependant)]
+  |                 --------- required by this bound in `no_interior_mut_check`
+6 | pub struct StructWithBytes<'a>(Mutex<&'a [u8]>);
+  |                                ^^^^^^^^^^^^^^^ the trait `NoInteriorMut` is not implemented for `Mutex<&'a [u8]>`
