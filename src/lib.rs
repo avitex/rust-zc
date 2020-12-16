@@ -33,7 +33,7 @@ pub use zc_derive::{Dependant, NoInteriorMut};
 
 use self::private::{Construct, TryConstruct};
 
-/// A convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
+/// Convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
 /// [`From`].
 ///
 /// See [`Zc::new()`] for an example.
@@ -55,7 +55,7 @@ macro_rules! from {
     }};
 }
 
-/// A convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
+/// Convenience macro for constructing a [`Zc`] type via a [`Dependant`]'s
 /// [`TryFrom`].
 ///
 /// See [`Zc::try_new()`] for an example.
@@ -81,7 +81,7 @@ macro_rules! try_from {
     }};
 }
 
-/// A zero-copy structure consisting of an [`Owner`] and a [`Dependant`].
+/// Zero-copy structure consisting of an [`Owner`] and a [`Dependant`].
 pub struct Zc<O: Owner, D> {
     // SAFETY: Order of fields is important for preventing dropping the storage
     // before the value that references it.
@@ -92,7 +92,7 @@ pub struct Zc<O: Owner, D> {
 impl<O, D> Zc<O, D>
 where
     O: Owner,
-    D: Dependant<'static> + 'static,
+    D: Dependant<'static>,
 {
     /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
@@ -262,7 +262,7 @@ where
     }
 }
 
-/// `Dependant` is implemented for types that use data provided by an [`Owner`].
+/// Implemented for types that use data provided by an [`Owner`].
 ///
 /// # Implementation
 ///
@@ -281,10 +281,41 @@ pub unsafe trait Dependant<'a>: Sized + Guarded {
     type Static: Dependant<'static>;
 
     #[doc(hidden)]
-    unsafe fn transmute_into_static(self) -> Self::Static;
+    unsafe fn erase_lifetime(self) -> Self::Static;
 }
 
-/// TODO
+/// Requirement for a [`Dependant`] type with the guarantee it will protect its
+/// internal state.
+///
+/// # Implementation
+///
+/// `Guarded` is auto-implemented for types that implement [`NoInteriorMut`].  
+///
+/// [`NoInteriorMut`] is auto-implemented through `#[derive(Dependant)]`. If the
+/// auto-implementation fails you can disable it as shown below with
+/// `#[zc(unguarded)]`. You may alternatively use `#[derive(NoInteriorMut)]` for
+/// types that are used internally by a [`Dependant`].
+///
+/// ```
+/// use zc::Dependant;
+///
+/// #[derive(Dependant)]
+/// // Disable the impl of `NoInteriorMut`
+/// #[zc(unguarded)]
+/// struct MyStruct<'a>(&'a ());
+///
+/// // Manually implementing `NoInteriorMut`
+/// unsafe impl<'a> zc::NoInteriorMut for MyStruct<'a> {}
+/// ```
+///
+/// # Safety
+///
+/// If a type does not and/or can not implement [`NoInteriorMut`] this trait can
+/// be manually implemented provided the guarantee the type:
+///
+/// - Can safely be stored with it's lifetime erased (ie. as `'static`).
+/// - Does not provided an interface that will accept data with non-`'static`
+///   lifetime though a interior mutable interface.
 pub unsafe trait Guarded {}
 
 unsafe impl<T> Guarded for T where T: NoInteriorMut {}
@@ -292,8 +323,16 @@ unsafe impl<T> Guarded for T where T: NoInteriorMut {}
 /// Implemented for types that have no interior mutability.
 ///
 /// # Safety
-/// Implementor must guarantee that the type does not have interior mutability
-/// (aka `Mutex<T>`).
+/// Implementor must guarantee that the type does not have interior mutability.
+///
+/// Types that provide interior mutability include both `!Sync` types (eg.
+/// [`RefCell<T>`]) and `Sync` types (eg. [`Mutex<T>`]).
+///
+/// See the [Rust Language Book] on interior mutability.
+///
+/// [`Mutex<T>`]: std::sync::Mutex
+/// [`RefCell<T>`]: std::cell::RefCell
+/// [Rust Language Book]: https://doc.rust-lang.org/book/ch15-05-interior-mutability.html
 pub unsafe trait NoInteriorMut {}
 
 /// Represents the owner of data with an associated storage type.
@@ -312,8 +351,23 @@ pub trait Owner: Sized + 'static {
     fn from_storage(storage: Self::Storage) -> Self;
 }
 
-/// Implemented for types that can safely provide a stable, aliasable
-/// reference to data they own.
+impl<T> Owner for T
+where
+    T: Storage,
+{
+    type Storage = T;
+
+    fn into_storage(self) -> Self::Storage {
+        self
+    }
+
+    fn from_storage(storage: Self::Storage) -> Self {
+        storage
+    }
+}
+
+/// Implemented for types that can safely provide a stable, aliasable reference
+/// to data they own.
 ///
 /// # `noalias`
 ///
@@ -322,11 +376,12 @@ pub trait Owner: Sized + 'static {
 /// attribute. This attribute allows the compiler to make optimisations with the
 /// guarantee that no other pointers are referencing the same data.
 ///
-/// We want to both own the data and pass a reference to it which can break with
-/// some of the optimisations the compiler can make. To achieve this, we need to
-/// remove the `noalias` attribute of the underlying pointer to let the compiler
-/// know that there will exist multiple pointers referencing the same owned
-/// data, which is also known as aliasing.
+/// We want to both own the data and provide a reference to it, outside of
+/// Rust's normal lifetime garantees, which can break with some of the
+/// optimisations the compiler can make. To achieve this, we need to remove the
+/// `noalias` attribute of the underlying pointer to let the compiler know that
+/// there will exist multiple pointers referencing the same owned data, which is
+/// also known as aliasing.
 ///
 /// # Safety
 ///
@@ -358,7 +413,7 @@ mod private {
         type Dependant = D::Static;
 
         unsafe fn construct(self, owned: &'o O) -> Self::Dependant {
-            (self)(owned).transmute_into_static()
+            (self)(owned).erase_lifetime()
         }
     }
 
@@ -380,7 +435,7 @@ mod private {
         type Dependant = D::Static;
 
         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error> {
-            (self)(owned).map(|d| d.transmute_into_static())
+            (self)(owned).map(|d| d.erase_lifetime())
         }
     }
 }
