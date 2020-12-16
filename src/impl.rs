@@ -1,22 +1,4 @@
-use crate::{NoInteriorMut, Owner, Storage};
-
-///////////////////////////////////////////////////////////////////////////////
-// Owner impl
-
-impl<T> Owner for T
-where
-    T: Storage,
-{
-    type Storage = T;
-
-    fn into_storage(self) -> Self::Storage {
-        self
-    }
-
-    fn from_storage(storage: Self::Storage) -> Self {
-        storage
-    }
-}
+use crate::NoInteriorMut;
 
 ///////////////////////////////////////////////////////////////////////////////
 // NoInteriorMut impl

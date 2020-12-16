@@ -67,7 +67,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
         unsafe impl #impl_dependant_generics zc::Dependant<#dependant_lifetime> for #name #ty_generics #where_clause {
             type Static = #name #ty_generic_static;
 
-            unsafe fn transmute_into_static(self) -> Self::Static {
+            unsafe fn erase_lifetime(self) -> Self::Static {
                 #no_interior_mut_check
                 core::mem::transmute(self)
             }
