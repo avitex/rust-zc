@@ -15,12 +15,12 @@ fn stable(t: &trybuild::TestCases) {
 #[rustversion::not(stable)]
 fn stable(_: &trybuild::TestCases) {}
 
-#[rustversion::since(1.49)]
+#[rustversion::all(since(1.49), not(nightly))]
 fn since_1_49(t: &trybuild::TestCases) {
     t.compile_fail("tests/invalid-use/since-1-49/*.rs");
 }
 
-#[rustversion::before(1.49)]
+#[rustversion::any(before(1.49), nightly)]
 fn since_1_49(_: &trybuild::TestCases) {}
 
 #[rustversion::nightly]

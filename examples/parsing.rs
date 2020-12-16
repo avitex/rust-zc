@@ -1,20 +1,23 @@
+use core::convert::TryFrom;
+
 use dangerous::{Fatal, Reader};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]
-pub struct ParsedResult<'a>(Result<Vec<&'a str>, Fatal>);
+pub struct ParsedResult<'a>(Vec<&'a str>);
 
-impl<'a> From<&'a [u8]> for ParsedResult<'a> {
-    fn from(bytes: &'a [u8]) -> Self {
+impl<'a> TryFrom<&'a [u8]> for ParsedResult<'a> {
+    type Error = Fatal;
+
+    fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
         let input = dangerous::input(bytes);
-        let result = input.read_all(parse);
-        Self(result)
+        input.read_all(parse).map(Self)
     }
 }
 
 fn main() {
     let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
-    let parsed = zc::from!(buf, ParsedResult, [u8]);
+    let parsed = zc::try_from!(buf, ParsedResult, [u8]).unwrap();
     dbg!(parsed);
 }
 

@@ -13,7 +13,8 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
 
 [features]
-default = ["alloc"]
+default = ["std"]
+std = ["alloc"]
 alloc = ["aliasable"]
 
 [dependencies]
