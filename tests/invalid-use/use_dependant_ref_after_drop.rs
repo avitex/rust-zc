@@ -12,7 +12,7 @@ impl<'a> From<&'a [u8]> for MyStruct<'a> {
 fn main() {
     let owner = vec![1, 2, 3];
     let data = zc::from!(owner, MyStruct, [u8]);
-    let dependant_ref = data.dependant::<MyStruct>();
+    let dependant_ref = data.get::<MyStruct>();
     core::mem::drop(data);
     assert_eq!(
         dependant_ref,

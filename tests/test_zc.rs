@@ -29,7 +29,7 @@ fn test_struct_with_bytes_construct() {
     let data = Zc::new(owner, construct_struct_with_bytes);
 
     assert_eq!(
-        data.dependant::<StructWithBytes>(),
+        data.get::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
     );
 }
@@ -40,7 +40,7 @@ fn test_struct_with_bytes_from() {
     let data = zc::from!(owner, StructWithBytes, [u8]);
 
     assert_eq!(
-        data.dependant::<StructWithBytes>(),
+        data.get::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
     );
 
@@ -56,7 +56,7 @@ fn test_struct_with_bytes_try_from() {
     let data = zc::try_from!(owner, StructWithBytes, [u8]).unwrap();
 
     assert_eq!(
-        data.dependant::<StructWithBytes>(),
+        data.get::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
     );
 }
@@ -75,7 +75,7 @@ fn test_struct_with_str_from() {
     let owner = String::from("hello");
     let data = zc::from!(owner, StructWithStr, str);
 
-    assert_eq!(data.dependant::<StructWithStr>(), &StructWithStr("ello"));
+    assert_eq!(data.get::<StructWithStr>(), &StructWithStr("ello"));
 }
 
 #[test]
@@ -111,6 +111,6 @@ fn test_aliasable_box() {
     let owner = AliasableBox::from(Box::new(1u8));
     let data = zc::from!(owner, StructWithBoxRef, u8);
 
-    assert_eq!(data.dependant::<StructWithBoxRef>(), &StructWithBoxRef(&1));
+    assert_eq!(data.get::<StructWithBoxRef>(), &StructWithBoxRef(&1));
     assert_eq!(AliasableBox::into_unique(data.into_owner()), Box::new(1));
 }

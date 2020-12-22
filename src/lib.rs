@@ -184,7 +184,7 @@ where
     /// let data = zc::from!(owner, MyStruct, [u8]);
     ///
     /// assert_eq!(
-    ///     data.dependant::<MyStruct>(),
+    ///     data.get::<MyStruct>(),
     ///     &MyStruct(&[2, 3])
     /// );
     /// ```
@@ -192,7 +192,7 @@ where
     // dependant again to retrieve it. GATs should provide us a way to make this
     // nicer with a generic associated lifetime.
     // See: https://github.com/rust-lang/rust/issues/44265
-    pub fn dependant<'a, T>(&'a self) -> &T
+    pub fn get<'a, T>(&'a self) -> &T
     where
         T: Dependant<'a, Static = D>,
     {
@@ -217,9 +217,9 @@ where
     /// let owner = vec![1, 2, 3];
     /// let data = zc::from!(owner, MyStruct, [u8]);
     ///
-    /// assert_eq!(data.owned(), &[1, 2, 3]);
+    /// assert_eq!(data.as_owned(), &[1, 2, 3]);
     /// ```
-    pub fn owned(&self) -> &<O::Storage as Deref>::Target {
+    pub fn as_owned(&self) -> &<O::Storage as Deref>::Target {
         &*self.storage
     }
 

@@ -15,8 +15,8 @@ fn main() {
     let owner = vec![1, 2, 3];
     let owner2 = vec![6, 6, 6];
     let data = zc::from!(owner, StructWithBytes, [u8]);
-    dbg!(data.dependant::<StructWithBytes>());
-    *data.dependant::<StructWithBytes>().0.lock().unwrap() = &owner2;
+    dbg!(data.get::<StructWithBytes>());
+    *data.get::<StructWithBytes>().0.lock().unwrap() = &owner2;
     drop(owner2);
-    dbg!(data.dependant::<StructWithBytes>());
+    dbg!(data.get::<StructWithBytes>());
 }

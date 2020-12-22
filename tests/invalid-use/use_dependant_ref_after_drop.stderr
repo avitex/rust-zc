@@ -1,7 +1,7 @@
 error[E0505]: cannot move out of `data` because it is borrowed
   --> $DIR/use_dependant_ref_after_drop.rs:16:21
    |
-15 |       let dependant_ref = data.dependant::<MyStruct>();
+15 |       let dependant_ref = data.get::<MyStruct>();
    |                           ---- borrow of `data` occurs here
 16 |       core::mem::drop(data);
    |                       ^^^^ move out of `data` occurs here

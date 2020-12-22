@@ -31,7 +31,7 @@ fn main() {
     let data = zc::from!(owner, StructWithBytes, [u8]);
 
     assert_eq!(
-        data.dependant::<StructWithBytes>(),
+        data.get::<StructWithBytes>(),
         &StructWithBytes(&[2, 3])
     )
 }
