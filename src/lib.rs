@@ -94,7 +94,7 @@ pub struct Zc<O: Owner, D> {
 impl<O, D> Zc<O, D>
 where
     O: Owner,
-    D: Dependant<'static>,
+    D: Dependant<'static> + 'static,
 {
     /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
@@ -266,9 +266,10 @@ where
 
 /// Implemented for types that use data provided by an [`Owner`].
 ///
-/// # Implementation
+/// # Implementation (recommended)
 ///
-/// Do not implement this manually and instead use the provided proc-macro as show below.
+/// It is recommeneded not to implement this manually and instead use the
+/// provided proc-macro as show below.
 ///
 /// ```
 /// use zc::Dependant;
@@ -278,11 +279,42 @@ where
 ///     value: &'a str,
 /// }
 /// ```
+///
+/// # Implementation (manual)
+///
+/// If you wish not to use the provided proc-macro you implement as shown:
+///
+/// ```
+/// use zc::NoInteriorMut;
+///
+/// #[derive(NoInteriorMut)]
+/// struct MyStruct<'a>(&'a [u8]);
+///
+/// unsafe impl<'a> zc::Dependant<'a> for MyStruct<'a> {
+///     type Static = MyStruct<'static>;
+///
+///     unsafe fn erase_lifetime(self) -> Self::Static {
+///         core::mem::transmute(self)
+///     }
+/// }
+/// ```
+///
+/// # Safety
+///
+/// Implementer must guarantee:
+///
+/// 1. The structure only requires a single lifetime.
+/// 2. `Self::Static` must be the same type but with a `'static` lifetime.
 pub unsafe trait Dependant<'a>: Sized + Guarded {
-    /// Always the exact same structure as `Self` but instead with a `'static` lifetime.
-    type Static: Dependant<'static>;
+    /// Always the exact same structure as `Self` but instead with a `'static`
+    /// lifetime.
+    type Static: Dependant<'static> + 'static;
 
-    #[doc(hidden)]
+    /// Erases the `Dependant`'s lifetime by returning a static variant.
+    ///
+    /// # Safety
+    ///
+    /// The value returned is for use by the `Zc` structure only.
     unsafe fn erase_lifetime(self) -> Self::Static;
 }
 
