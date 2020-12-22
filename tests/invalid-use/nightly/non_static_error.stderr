@@ -7,20 +7,20 @@ error: implementation of `zc::private::TryConstruct` is not general enough
    ::: $WORKSPACE/src/lib.rs
     |
     | /     pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
-153 | |     where
-154 | |         E: 'static,
-155 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
+155 | |     where
+156 | |         E: 'static,
+157 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
 ...   |
-162 | |         }
-163 | |     }
+164 | |         }
+165 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::try_new`...
 ...
-420 | /     pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
-421 | |         type Error: 'static;
-422 | |         type Dependant: Dependant<'static>;
-423 | |
-424 | |         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
-425 | |     }
+422 | /     pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+423 | |         type Error: 'static;
+424 | |         type Dependant: Dependant<'static>;
+425 | |
+426 | |         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+427 | |     }
     | |_____- trait `zc::private::TryConstruct` defined here
     |
     = note: ...`for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` must implement `zc::private::TryConstruct<'0, [u8]>`, for any lifetime `'0`...

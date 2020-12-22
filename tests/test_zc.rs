@@ -28,10 +28,7 @@ fn test_struct_with_bytes_construct() {
     let owner = vec![1, 2, 3];
     let data = Zc::new(owner, construct_struct_with_bytes);
 
-    assert_eq!(
-        data.get::<StructWithBytes>(),
-        &StructWithBytes(&[2, 3])
-    );
+    assert_eq!(data.get::<StructWithBytes>(), &StructWithBytes(&[2, 3]));
 }
 
 #[test]
@@ -39,10 +36,7 @@ fn test_struct_with_bytes_from() {
     let owner = vec![1, 2, 3];
     let data = zc::from!(owner, StructWithBytes, [u8]);
 
-    assert_eq!(
-        data.get::<StructWithBytes>(),
-        &StructWithBytes(&[2, 3])
-    );
+    assert_eq!(data.get::<StructWithBytes>(), &StructWithBytes(&[2, 3]));
 
     assert_eq!(
         format!("{:?}", data),
@@ -55,10 +49,7 @@ fn test_struct_with_bytes_try_from() {
     let owner = vec![1, 2, 3];
     let data = zc::try_from!(owner, StructWithBytes, [u8]).unwrap();
 
-    assert_eq!(
-        data.get::<StructWithBytes>(),
-        &StructWithBytes(&[2, 3])
-    );
+    assert_eq!(data.get::<StructWithBytes>(), &StructWithBytes(&[2, 3]));
 }
 
 #[test]

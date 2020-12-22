@@ -1,4 +1,4 @@
 [zc]
-features = "alloc"
+features = "alloc, derive"
 output-dir = "target/tarpaulin"
 exclude-files = ["tests/*", "fuzz/*"]

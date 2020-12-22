@@ -13,12 +13,13 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
 
 [features]
-default = ["std"]
+default = ["std", "derive"]
 std = ["alloc"]
 alloc = ["aliasable"]
+derive = ["zc-derive"]
 
 [dependencies]
-zc-derive = { version = "0.1", path = "./zc-derive" }
+zc-derive = { version = "0.1", path = "./zc-derive", optional = true }
 aliasable = { version = "0.1.2", optional = true }
 
 [dev-dependencies]

@@ -29,6 +29,8 @@ use core::{fmt, mem};
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
+
+#[cfg(feature = "derive")]
 pub use zc_derive::{Dependant, NoInteriorMut};
 
 use self::private::{Construct, TryConstruct};
