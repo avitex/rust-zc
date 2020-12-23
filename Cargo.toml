@@ -1,6 +1,6 @@
 [package]
 name = "zc"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["avitex <avitex@wfxlabs.com>"]
 edition = "2018"
 description = "Self-referential zero-copy structure"
@@ -19,7 +19,7 @@ alloc = ["aliasable"]
 derive = ["zc-derive"]
 
 [dependencies]
-zc-derive = { version = "0.1", path = "./zc-derive", optional = true }
+zc-derive = { version = "0.2", optional = true }
 aliasable = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
@@ -33,3 +33,6 @@ members = [
     ".",
     "./zc-derive",
 ]
+
+[patch.crates-io]
+zc-derive = { path = "./zc-derive" }

@@ -1,6 +1,6 @@
 [package]
 name = "zc-derive"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["avitex <avitex@wfxlabs.com>"]
 edition = "2018"
 description = "Derive macro for zc crate"
