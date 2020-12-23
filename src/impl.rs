@@ -1,3 +1,5 @@
+use core::num::*;
+
 use crate::NoInteriorMut;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -17,8 +19,24 @@ impl_no_interior_mut!(u8, u16, u32, u64, u128);
 impl_no_interior_mut!(i8, i16, i32, i64, i128);
 impl_no_interior_mut!(&str, &[u8]);
 
+impl_no_interior_mut!(
+    NonZeroI8,
+    NonZeroI16,
+    NonZeroI32,
+    NonZeroI64,
+    NonZeroI128,
+    NonZeroIsize,
+    NonZeroU8,
+    NonZeroU16,
+    NonZeroU32,
+    NonZeroU64,
+    NonZeroU128,
+    NonZeroUsize
+);
+
 unsafe impl<T: NoInteriorMut> NoInteriorMut for &T {}
 unsafe impl<T: NoInteriorMut> NoInteriorMut for Option<T> {}
+unsafe impl<T: NoInteriorMut> NoInteriorMut for Wrapping<T> {}
 unsafe impl<T: NoInteriorMut, E: NoInteriorMut> NoInteriorMut for Result<T, E> {}
 
 ///////////////////////////////////////////////////////////////////////////////
