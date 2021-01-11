@@ -32,8 +32,6 @@ jobs:
         run: cargo build
       - name: Test code
         run: cargo test
-      - name: Test code with no default features
-        run: cargo test --no-default-features
       - name: Lint code
         run: cargo clippy
       - name: Check code style
