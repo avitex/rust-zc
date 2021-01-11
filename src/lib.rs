@@ -24,8 +24,8 @@ extern crate alloc;
 
 mod r#impl;
 
+use core::fmt;
 use core::ops::Deref;
-use core::{fmt, mem};
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
@@ -198,7 +198,8 @@ where
     where
         T: Dependant<'a, Static = D>,
     {
-        unsafe { mem::transmute(&self.value) }
+        let value_ptr: *const D = &self.value;
+        unsafe { &*(value_ptr as *const T) }
     }
 
     /// Return a reference to the data [`Owner`] provides.

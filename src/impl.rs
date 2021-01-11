@@ -1,4 +1,7 @@
-use core::num::*;
+use core::num::{
+    NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+    NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping,
+};
 
 use crate::NoInteriorMut;
 
@@ -104,14 +107,15 @@ mod alloc {
 #[cfg(feature = "std")]
 mod std {
     use std::collections::{HashMap, HashSet};
+    use std::hash::BuildHasher;
 
     use crate::NoInteriorMut;
 
     ///////////////////////////////////////////////////////////////////////////
     // NoInteriorMut impl
 
-    unsafe impl<T: NoInteriorMut> NoInteriorMut for HashSet<T> {}
-    unsafe impl<K: NoInteriorMut, V: NoInteriorMut> NoInteriorMut for HashMap<K, V> {}
+    unsafe impl<T: NoInteriorMut, S: BuildHasher> NoInteriorMut for HashSet<T, S> {}
+    unsafe impl<K: NoInteriorMut, V: NoInteriorMut, S: BuildHasher> NoInteriorMut for HashMap<K, V, S> {}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
