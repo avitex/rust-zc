@@ -2,7 +2,12 @@ use dangerous::{Expected, Reader};
 use zc::Dependant;
 
 #[derive(Dependant, Debug)]
+#[zc(unguarded)]
 pub struct ParsedResult<'a>(Result<Vec<&'a str>, Expected<'a>>);
+
+// This and `zc(unguarded)` are not needed with the `zc` feature enabled with
+// the dangerous crate.
+unsafe impl<'a> zc::NoInteriorMut for ParsedResult<'a> {}
 
 impl<'a> From<&'a [u8]> for ParsedResult<'a> {
     fn from(bytes: &'a [u8]) -> Self {
