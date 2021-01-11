@@ -1,5 +1,0 @@
-error: 2 lifetimes on `MyStruct` when only a single is valid on a `zc::Dependant`
- --> $DIR/two_lifetimes_on_dependant.rs:4:20
-  |
-4 | pub struct MyStruct<'a, 'b>(&'a (), &'b ());
-  |                    ^

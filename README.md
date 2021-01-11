@@ -36,3 +36,17 @@ fn main() {
     )
 }
 ```
+
+## Testing
+
+Run standard tests:
+
+```sh
+cargo test
+```
+
+Run miri tests:
+
+```sh
+cargo miri test --test test_zc
+```
