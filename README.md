@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/avitex/rust-zc.svg?branch=master)](https://travis-ci.com/avitex/rust-zc)
+[![Build Status](https://github.com/avitex/rust-zc/workflows/build/badge.svg)](https://github.com/avitex/rust-zc/actions?query=workflow:build)
 [![Coverage Status](https://codecov.io/gh/avitex/rust-zc/branch/master/graph/badge.svg?token=X2LXHI8VYL)](https://codecov.io/gh/avitex/rust-zc)
 [![Crate](https://img.shields.io/crates/v/zc.svg)](https://crates.io/crates/zc)
 [![Docs](https://docs.rs/zc/badge.svg)](https://docs.rs/zc)
