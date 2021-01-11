@@ -1,4 +1,4 @@
-use zc::aliasable::boxed::AliasableBox;
+use zc::aliasable::{boxed::AliasableBox, vec::AliasableVec};
 use zc::{Dependant, NoInteriorMut, Zc};
 
 #[derive(Dependant)]
@@ -104,4 +104,22 @@ fn test_aliasable_box() {
 
     assert_eq!(data.get::<StructWithBoxRef>(), &StructWithBoxRef(&1));
     assert_eq!(AliasableBox::into_unique(data.into_owner()), Box::new(1));
+}
+
+#[test]
+fn test_aliasable_vec() {
+    #[derive(PartialEq, Debug, Dependant)]
+    pub struct StructWithVecRef<'a>(&'a [u8]);
+
+    impl<'a> From<&'a [u8]> for StructWithVecRef<'a> {
+        fn from(v: &'a [u8]) -> Self {
+            Self(v)
+        }
+    }
+
+    let owner = AliasableVec::from(vec![1u8]);
+    let data = zc::from!(owner, StructWithVecRef, [u8]);
+
+    assert_eq!(data.get::<StructWithVecRef>(), &StructWithVecRef(&[1u8]));
+    assert_eq!(AliasableVec::into_unique(data.into_owner()), vec![1]);
 }
