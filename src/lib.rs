@@ -412,7 +412,7 @@ where
 /// guarantee that no other pointers are referencing the same data.
 ///
 /// We want to both own the data and provide a reference to it, outside of
-/// Rust's normal lifetime garantees, which can break with some of the
+/// Rust's normal lifetime guarantees, which can break with some of the
 /// optimisations the compiler can make. To achieve this, we need to remove the
 /// `noalias` attribute of the underlying pointer to let the compiler know that
 /// there will exist multiple pointers referencing the same owned data, which is
