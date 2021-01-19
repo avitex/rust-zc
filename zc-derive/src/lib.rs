@@ -4,12 +4,18 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Data, DeriveInput, GenericParam, Ident, Lifetime, LifetimeDef};
+use syn::{
+    parse_macro_input, Data, DeriveInput, Field, GenericParam, Ident, Lifetime, LifetimeDef,
+};
 
-#[proc_macro_derive(NoInteriorMut)]
-pub fn derive_no_interior_mut(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Guarded)]
+pub fn derive_guarded(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let no_interior_mut_check = impl_no_interior_mut_check(&input, false);
+    let derive_opts = match parse_derive_attrs(&input) {
+        Ok(opts) => opts,
+        Err(err) => return TokenStream::from(err),
+    };
+    let no_interior_mut_check = impl_guarded_check(&input, &derive_opts, false);
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let expanded = quote! {
@@ -18,7 +24,7 @@ pub fn derive_no_interior_mut(input: TokenStream) -> TokenStream {
                 #no_interior_mut_check
             }
         }
-        unsafe impl #impl_generics zc::NoInteriorMut for #name #ty_generics #where_clause {}
+        unsafe impl #impl_generics zc::Guarded for #name #ty_generics #where_clause {}
     };
     TokenStream::from(expanded)
 }
@@ -35,7 +41,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     let mut static_generics = input.generics.clone();
     let mut dependant_generics = input.generics.clone();
     let no_interior_mut_check =
-        impl_no_interior_mut_check(&input, !derive_opts.no_interior_mut_impl);
+        impl_guarded_check(&input, &derive_opts, !derive_opts.no_interior_mut_impl);
     let static_lifetime = Lifetime::new("'static", Span::call_site());
     let dependant_lifetime = if lifetime_count == 0 {
         let dependant_lifetime = Lifetime::new("'a", Span::call_site());
@@ -73,49 +79,60 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     };
     if derive_opts.no_interior_mut_impl {
         dependant_impl.extend(quote! {
-            unsafe impl #impl_generics zc::NoInteriorMut for #name #ty_generics #where_clause {}
+            unsafe impl #impl_generics zc::Guarded for #name #ty_generics #where_clause {}
         });
     }
     TokenStream::from(dependant_impl)
 }
 
-fn impl_no_interior_mut_check(input: &DeriveInput, skip: bool) -> TokenStream2 {
-    let mut checks = TokenStream2::new();
+fn impl_guarded_check(input: &DeriveInput, opts: &DeriveOpts, skip: bool) -> TokenStream2 {
     if skip {
-        return checks;
+        return TokenStream2::new();
     }
-    checks.extend(quote! {
-        fn no_interior_mut_check<T: zc::NoInteriorMut>() {};
-    });
     match &input.data {
-        Data::Struct(v) => {
-            for field in v.fields.iter() {
-                let field_ty = &field.ty;
-                checks.extend(quote! {
-                    no_interior_mut_check::<#field_ty>();
-                });
-            }
-            checks
-        }
-        Data::Enum(v) => {
-            for field in v.variants.iter().flat_map(|v| v.fields.iter()) {
-                let field_ty = &field.ty;
-                checks.extend(quote! {
-                    no_interior_mut_check::<#field_ty>();
-                });
-            }
-            checks
-        }
+        Data::Struct(v) => field_checks(opts, v.fields.iter()),
+        Data::Enum(v) => field_checks(opts, v.variants.iter().flat_map(|v| v.fields.iter())),
         Data::Union(_) => {
-            quote_spanned! { input.span() => compile_error!("Deriving `zc::NoInteriorMut` is not supported for unions"); }
+            quote_spanned! { input.span() => compile_error!("Deriving `zc::Guarded` is not supported for unions"); }
         }
     }
+}
+
+fn field_checks<'f>(opts: &DeriveOpts, fields: impl Iterator<Item = &'f Field>) -> TokenStream2 {
+    let mut checks = TokenStream2::new();
+    checks.extend(quote! {
+        pub fn copy_check<T: Copy>() {};
+        pub fn guarded_check<T: zc::Guarded>() {};
+    });
+    for field in fields {
+        let field_ty = &field.ty;
+        let field_opts = match parse_field_attrs(opts, field) {
+            Ok(opts) => opts,
+            Err(err) => return err,
+        };
+        checks.extend(match field_opts.guard {
+            GuardType::Copy => quote! {
+                copy_check::<#field_ty>();
+            },
+            GuardType::Default => quote! {
+                guarded_check::<#field_ty>();
+            },
+        });
+    }
+    checks
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // DeriveOpts
 
+#[derive(Copy, Clone)]
+enum GuardType {
+    Copy,
+    Default,
+}
+
 struct DeriveOpts {
+    guard: GuardType,
     no_interior_mut_impl: bool,
 }
 
@@ -127,6 +144,7 @@ fn parse_derive_attrs(input: &DeriveInput) -> Result<DeriveOpts, TokenStream2> {
         .filter(|attr| attr.path.get_ident() == Some(&zc_attr_ident));
 
     let mut attrs = DeriveOpts {
+        guard: GuardType::Default,
         no_interior_mut_impl: true,
     };
 
@@ -140,6 +158,36 @@ fn parse_derive_attrs(input: &DeriveInput) -> Result<DeriveOpts, TokenStream2> {
                 quote_spanned! { attr.span() => compile_error!("Unknown derive options"); },
             );
         }
+    }
+
+    Ok(attrs)
+}
+
+struct FieldOpts {
+    guard: GuardType,
+}
+
+fn parse_field_attrs(opts: &DeriveOpts, input: &Field) -> Result<FieldOpts, TokenStream2> {
+    let zc_attr_ident = Ident::new("zc", Span::call_site());
+    let zc_attrs = input
+        .attrs
+        .iter()
+        .filter(|attr| attr.path.get_ident() == Some(&zc_attr_ident));
+
+    let mut attrs = FieldOpts { guard: opts.guard };
+
+    for attr in zc_attrs {
+        let attr_value = attr.tokens.to_string();
+
+        attrs.guard = match attr_value.as_str() {
+            r#"(guard = "Copy")"# => GuardType::Copy,
+            r#"(guard = "Default")"# => GuardType::Default,
+            _ => {
+                return Err(
+                    quote_spanned! { attr.span() => compile_error!("Unknown field options"); },
+                );
+            }
+        };
     }
 
     Ok(attrs)

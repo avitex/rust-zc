@@ -1,14 +1,23 @@
 use zc::aliasable::{boxed::AliasableBox, vec::AliasableVec};
-use zc::{Dependant, NoInteriorMut, Zc};
+use zc::{Dependant, Guarded, Zc};
 
 #[derive(Dependant)]
 pub struct StructWithNoLifetime;
 
-#[derive(NoInteriorMut)]
+#[derive(Guarded)]
 pub struct ChildType<'a>(&'a ());
 
 #[derive(Dependant)]
 pub struct StructWithOneLifetime<'a>(ChildType<'a>);
+
+#[derive(Copy, Clone)]
+pub struct CopyField;
+
+#[derive(Dependant)]
+pub struct StructWithCopy<'a>(#[zc(guard = "Copy")] &'a CopyField);
+
+#[derive(Dependant)]
+pub struct StructWithDefault<'a>(#[zc(guard = "Default")] &'a u8);
 
 #[derive(PartialEq, Debug, Dependant)]
 pub struct StructWithBytes<'a>(&'a [u8]);

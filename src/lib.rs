@@ -31,7 +31,7 @@ use core::ops::Deref;
 pub use aliasable;
 
 #[cfg(feature = "derive")]
-pub use zc_derive::{Dependant, NoInteriorMut};
+pub use zc_derive::{Dependant, Guarded};
 
 use self::private::{Construct, TryConstruct};
 
@@ -286,9 +286,9 @@ where
 /// If you wish not to use the provided proc-macro you implement as shown:
 ///
 /// ```
-/// use zc::NoInteriorMut;
+/// use zc::Guarded;
 ///
-/// #[derive(NoInteriorMut)]
+/// #[derive(Guarded)]
 /// struct MyStruct<'a>(&'a [u8]);
 ///
 /// unsafe impl<'a> zc::Dependant<'a> for MyStruct<'a> {
