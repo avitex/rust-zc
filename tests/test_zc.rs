@@ -11,13 +11,30 @@ pub struct ChildType<'a>(&'a ());
 pub struct StructWithOneLifetime<'a>(ChildType<'a>);
 
 #[derive(Copy, Clone)]
-pub struct CopyField;
+pub struct CopyType;
 
 #[derive(Dependant)]
-pub struct StructWithCopy<'a>(#[zc(guard = "Copy")] &'a CopyField);
+#[allow(dead_code)]
+pub struct StructWithCopy<'a> {
+    #[zc(guard = "Copy")]
+    field_a: &'a CopyType,
+    field_b: (),
+}
 
 #[derive(Dependant)]
-pub struct StructWithDefault<'a>(#[zc(guard = "Default")] &'a u8);
+#[allow(dead_code)]
+#[zc(guard = "Copy")]
+pub struct StructWithAllCopy<'a> {
+    field_a: &'a CopyType,
+    field_b: (),
+}
+
+#[derive(Dependant)]
+#[allow(dead_code)]
+pub struct StructWithDefault<'a> {
+    #[zc(guard = "Default")]
+    field: &'a (),
+}
 
 #[derive(PartialEq, Debug, Dependant)]
 pub struct StructWithBytes<'a>(&'a [u8]);

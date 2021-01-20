@@ -5,13 +5,14 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Field, GenericParam, Ident, Lifetime, LifetimeDef,
+    parse_macro_input, Attribute, Data, DeriveInput, Field, GenericParam, Ident, Lifetime,
+    LifetimeDef,
 };
 
-#[proc_macro_derive(Guarded)]
+#[proc_macro_derive(Guarded, attributes(zc))]
 pub fn derive_guarded(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let derive_opts = match parse_derive_attrs(&input) {
+    let derive_opts = match parse_derive_attrs(&input, false) {
         Ok(opts) => opts,
         Err(err) => return TokenStream::from(err),
     };
@@ -34,14 +35,13 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
     let lifetime_count = input.generics.lifetimes().count();
-    let derive_opts = match parse_derive_attrs(&input) {
+    let derive_opts = match parse_derive_attrs(&input, true) {
         Ok(opts) => opts,
         Err(err) => return TokenStream::from(err),
     };
     let mut static_generics = input.generics.clone();
     let mut dependant_generics = input.generics.clone();
-    let no_interior_mut_check =
-        impl_guarded_check(&input, &derive_opts, !derive_opts.no_interior_mut_impl);
+    let no_interior_mut_check = impl_guarded_check(&input, &derive_opts, !derive_opts.guarded_impl);
     let static_lifetime = Lifetime::new("'static", Span::call_site());
     let dependant_lifetime = if lifetime_count == 0 {
         let dependant_lifetime = Lifetime::new("'a", Span::call_site());
@@ -77,7 +77,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
             }
         }
     };
-    if derive_opts.no_interior_mut_impl {
+    if derive_opts.guarded_impl {
         dependant_impl.extend(quote! {
             unsafe impl #impl_generics zc::Guarded for #name #ty_generics #where_clause {}
         });
@@ -133,10 +133,13 @@ enum GuardType {
 
 struct DeriveOpts {
     guard: GuardType,
-    no_interior_mut_impl: bool,
+    guarded_impl: bool,
 }
 
-fn parse_derive_attrs(input: &DeriveInput) -> Result<DeriveOpts, TokenStream2> {
+fn parse_derive_attrs(
+    input: &DeriveInput,
+    for_dependant: bool,
+) -> Result<DeriveOpts, TokenStream2> {
     let zc_attr_ident = Ident::new("zc", Span::call_site());
     let zc_attrs = input
         .attrs
@@ -145,18 +148,23 @@ fn parse_derive_attrs(input: &DeriveInput) -> Result<DeriveOpts, TokenStream2> {
 
     let mut attrs = DeriveOpts {
         guard: GuardType::Default,
-        no_interior_mut_impl: true,
+        guarded_impl: true,
     };
 
     for attr in zc_attrs {
         let attr_value = attr.tokens.to_string();
 
         if attr_value == "(unguarded)" {
-            attrs.no_interior_mut_impl = false;
+            if !for_dependant {
+                return Err(quote_spanned! {
+                    attr.span() => compile_error!(
+                        "attempting to disable `zc::Guarded` implementation while deriving `zc::Guarded`"
+                    );
+                });
+            }
+            attrs.guarded_impl = false;
         } else {
-            return Err(
-                quote_spanned! { attr.span() => compile_error!("Unknown derive options"); },
-            );
+            attrs.guard = parse_guard_type(&attr, attr_value.as_str())?;
         }
     }
 
@@ -177,18 +185,16 @@ fn parse_field_attrs(opts: &DeriveOpts, input: &Field) -> Result<FieldOpts, Toke
     let mut attrs = FieldOpts { guard: opts.guard };
 
     for attr in zc_attrs {
-        let attr_value = attr.tokens.to_string();
-
-        attrs.guard = match attr_value.as_str() {
-            r#"(guard = "Copy")"# => GuardType::Copy,
-            r#"(guard = "Default")"# => GuardType::Default,
-            _ => {
-                return Err(
-                    quote_spanned! { attr.span() => compile_error!("Unknown field options"); },
-                );
-            }
-        };
+        attrs.guard = parse_guard_type(&attr, attr.tokens.to_string().as_str())?;
     }
 
     Ok(attrs)
+}
+
+fn parse_guard_type(attr: &Attribute, attr_value: &str) -> Result<GuardType, TokenStream2> {
+    match attr_value {
+        r#"(guard = "Copy")"# => Ok(GuardType::Copy),
+        r#"(guard = "Default")"# => Ok(GuardType::Default),
+        _ => Err(quote_spanned! { attr.span() => compile_error!("Unknown `zc` options"); }),
+    }
 }
