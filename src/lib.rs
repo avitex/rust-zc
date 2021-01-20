@@ -267,7 +267,7 @@ where
 
 /// Implemented for types that use data provided by an [`Owner`].
 ///
-/// # Implementation (recommended)
+/// # Derive implementations (recommended)
 ///
 /// It is recommeneded not to implement this manually and instead use the
 /// provided proc-macro as show below.
@@ -281,7 +281,7 @@ where
 /// }
 /// ```
 ///
-/// # Implementation (manual)
+/// # Manual implementations
 ///
 /// If you wish not to use the provided proc-macro you implement as shown:
 ///
@@ -322,25 +322,79 @@ pub unsafe trait Dependant<'a>: Sized + Guarded {
 /// Requirement for a [`Dependant`] type with the guarantee it will protect its
 /// internal state.
 ///
-/// # Implementation
+/// # Derive implementations (recommended)
 ///
-/// `Guarded` is auto-implemented for types that implement [`NoInteriorMut`].  
-///
-/// [`NoInteriorMut`] is auto-implemented through `#[derive(Dependant)]`. If the
-/// auto-implementation fails you can disable it as shown below with
-/// `#[zc(unguarded)]`. You may alternatively use `#[derive(NoInteriorMut)]` for
-/// types that are used internally by a [`Dependant`].
+/// `Guarded` is auto-implemented for types that implement [`NoInteriorMut`], or
+/// is auto-implemented when deriving `Dependant`. If the auto-implementation
+/// fails and the type does not implement [`Copy`] see below how to manually
+/// implement `Guarded`. You may alternatively derive `Guarded` for types that
+/// are used internally by a [`Dependant`].
 ///
 /// ```
 /// use zc::Dependant;
 ///
 /// #[derive(Dependant)]
-/// // Disable the impl of `NoInteriorMut`
+/// pub struct MyStruct<'a> {
+///     field: &'a [u8],
+/// }
+/// ```
+///
+/// # Derive implementations for `Copy`
+///
+/// If a type implements [`Copy`] it cannot support interior mutability and
+/// therefore is a valid `Guarded` type. As impl specialization does not exist
+/// we unfortunately cannot `impl<T> NoInteriorMut for T where T: Copy {}`.
+///
+/// To use a [`Copy`] type without having to implement [`NoInteriorMut`] you can
+/// tell the derive implementation to guard based on a [`Copy`] bound for a
+/// specific field or all fields.
+///
+/// ```
+/// use zc::Dependant;
+///
+/// #[derive(Copy, Clone)]
+/// pub struct CopyType;
+///
+/// #[derive(Dependant)]
+/// pub struct StructWithCopy<'a> {
+///     // This field has a `Copy` bound.
+///     #[zc(guard = "Copy")]
+///     field_a: &'a CopyType,
+///     // This field has the standard `Guarded` bound.
+///     field_b: u8,
+/// }
+///
+/// // All fields in this struct have the `Copy` bound.
+/// #[derive(Dependant)]
+/// #[zc(guard = "Copy")]
+/// pub struct StructWithAllCopy<'a> {
+///     field_a: &'a CopyType,
+///     field_b: u8,
+/// }
+/// ```
+///
+/// # Manual implementation
+///
+/// If you cannot use an auto-implementation, you can disable it as shown below
+/// with `#[zc(unguarded)]`.
+///
+/// Prefer implementing [`NoInteriorMut`] over `Guarded` if applicable to make
+/// the safety constraints easier to understand.
+///
+/// ```
+/// use zc::Dependant;
+///
+/// #[derive(Dependant)]
+/// // Disable the impl of `Guarded`
 /// #[zc(unguarded)]
 /// struct MyStruct<'a>(&'a ());
 ///
-/// // Manually implementing `NoInteriorMut`
+/// // Implementing `Guarded` through `NoInteriorMut`.
 /// unsafe impl<'a> zc::NoInteriorMut for MyStruct<'a> {}
+///
+/// // Alternatively if we do have interior mutation but uphold
+/// // the guarantees of `Guarded` then we implement that instead.
+/// // unsafe impl<'a> zc::Guarded for MyStruct<'a> {}
 /// ```
 ///
 /// # Safety
