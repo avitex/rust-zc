@@ -93,7 +93,7 @@ fn impl_guarded_check(input: &DeriveInput, opts: &DeriveOpts, skip: bool) -> Tok
         Data::Struct(v) => field_checks(opts, v.fields.iter()),
         Data::Enum(v) => field_checks(opts, v.variants.iter().flat_map(|v| v.fields.iter())),
         Data::Union(_) => {
-            quote_spanned! { input.span() => compile_error!("Deriving `zc::Guarded` is not supported for unions"); }
+            quote_spanned! { input.span() => compile_error!("deriving `zc::Guarded` is not supported for unions"); }
         }
     }
 }
@@ -122,14 +122,14 @@ fn field_checks<'f>(opts: &DeriveOpts, fields: impl Iterator<Item = &'f Field>) 
     checks
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// DeriveOpts
-
 #[derive(Copy, Clone)]
 enum GuardType {
     Copy,
     Default,
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// DeriveOpts
 
 struct DeriveOpts {
     guard: GuardType,
@@ -170,6 +170,9 @@ fn parse_derive_attrs(
 
     Ok(attrs)
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// FieldOpts
 
 struct FieldOpts {
     guard: GuardType,
