@@ -265,7 +265,7 @@ where
     }
 }
 
-/// Implemented for types that use data provided by an [`Owner`].
+/// Implemented for [`Guarded`] types that use data provided by an [`Owner`].
 ///
 /// # Derive implementations (recommended)
 ///
