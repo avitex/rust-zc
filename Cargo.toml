@@ -11,6 +11,7 @@ repository = "https://github.com/avitex/rust-zc"
 license = "MIT"
 readme = "README.md"
 include = ["src/**/*", "tests/**/*", "examples/**/*", "README.md", "LICENSE", "Cargo.toml"]
+keywords = ["parsing", "zero-copy"]
 
 [features]
 default = ["std", "derive"]
