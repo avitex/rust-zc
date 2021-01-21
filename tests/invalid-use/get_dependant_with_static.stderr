@@ -1,0 +1,11 @@
+error[E0597]: `data` does not live long enough
+  --> $DIR/get_dependant_with_static.rs:15:25
+   |
+15 |     let dependant_ref = data.get::<MyStruct<'static>>();
+   |                         ^^^^---------------------------
+   |                         |
+   |                         borrowed value does not live long enough
+   |                         argument requires that `data` is borrowed for `'static`
+...
+20 | }
+   | - `data` dropped here while still borrowed
