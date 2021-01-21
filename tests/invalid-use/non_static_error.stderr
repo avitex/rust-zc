@@ -4,24 +4,26 @@ error: implementation of `zc::private::TryConstruct` is not general enough
 20  |       let result = zc::try_from!(owner, MyStruct, [u8]);
     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't satisfy where-clause
     |
+   ::: $WORKSPACE/src/private.rs
+    |
+    | / pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+23  | |     type Error: 'static;
+24  | |     type Dependant: Dependant<'static>;
+25  | |
+26  | |     unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+27  | | }
+    | |_- trait `zc::private::TryConstruct` defined here
+    |
    ::: $WORKSPACE/src/lib.rs
     |
     | /     pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
-155 | |     where
-156 | |         E: 'static,
-157 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
+156 | |     where
+157 | |         E: 'static,
+158 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
 ...   |
-164 | |         }
-165 | |     }
+165 | |         }
+166 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::try_new`...
-...
-509 | /     pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
-510 | |         type Error: 'static;
-511 | |         type Dependant: Dependant<'static>;
-512 | |
-513 | |         unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
-514 | |     }
-    | |_____- trait `zc::private::TryConstruct` defined here
     |
     = note: ...`for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` must implement `zc::private::TryConstruct<'0, [u8]>`, for any lifetime `'0`...
     = note: ...but `for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` actually implements `zc::private::TryConstruct<'1, [u8]>`, for some specific lifetime `'1`
