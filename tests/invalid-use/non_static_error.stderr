@@ -8,7 +8,7 @@ error: implementation of `zc::private::TryConstruct` is not general enough
     |
     | / pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
 23  | |     type Error: 'static;
-24  | |     type Dependant: Dependant<'static>;
+24  | |     type Dependant: Dependant + 'static;
 25  | |
 26  | |     unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
 27  | | }

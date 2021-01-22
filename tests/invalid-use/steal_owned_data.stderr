@@ -7,7 +7,7 @@ error: implementation of `zc::private::Construct` is not general enough
    ::: $WORKSPACE/src/private.rs
     |
     | / pub unsafe trait Construct<'o, O: ?Sized>: Sized {
-4   | |     type Dependant: Dependant<'static>;
+4   | |     type Dependant: Dependant + 'static;
 5   | |
 6   | |     unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
 7   | | }

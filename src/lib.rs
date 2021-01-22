@@ -95,7 +95,7 @@ pub struct Zc<O: Owner, D> {
 impl<O, D> Zc<O, D>
 where
     O: Owner,
-    D: Dependant<'static> + 'static,
+    D: Dependant + 'static,
 {
     /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
@@ -197,7 +197,7 @@ where
     // See: https://github.com/rust-lang/rust/issues/44265
     pub fn get<'a, T>(&'a self) -> &T
     where
-        T: Dependant<'a, Static = D>,
+        T: DependantWithLifetime<'a, Static = D>,
     {
         let value_ptr: *const D = &self.value;
         unsafe { &*(value_ptr as *const T) }
@@ -292,13 +292,15 @@ where
 /// #[derive(Guarded)]
 /// struct MyStruct<'a>(&'a [u8]);
 ///
-/// unsafe impl<'a> zc::Dependant<'a> for MyStruct<'a> {
+/// unsafe impl<'a> zc::Dependant for MyStruct<'a> {
 ///     type Static = MyStruct<'static>;
 ///
 ///     unsafe fn erase_lifetime(self) -> Self::Static {
 ///         core::mem::transmute(self)
 ///     }
 /// }
+///
+/// unsafe impl<'a> zc::DependantWithLifetime<'a> for MyStruct<'a> {}
 /// ```
 ///
 /// # Safety
@@ -307,10 +309,10 @@ where
 ///
 /// 1. The structure only requires a single lifetime.
 /// 2. `Self::Static` must be the same type but with a `'static` lifetime.
-pub unsafe trait Dependant<'a>: Sized + Guarded {
+pub unsafe trait Dependant: Sized + Guarded {
     /// Always the exact same structure as `Self` but instead with a `'static`
     /// lifetime.
-    type Static: Dependant<'static> + 'static;
+    type Static: Dependant + 'static;
 
     /// Erases the `Dependant`'s lifetime by returning a static variant.
     ///
@@ -319,6 +321,14 @@ pub unsafe trait Dependant<'a>: Sized + Guarded {
     /// The value returned is for use by the `Zc` structure only.
     unsafe fn erase_lifetime(self) -> Self::Static;
 }
+
+/// A [`Dependant`] with a lifetime bound for its referenced data.
+///
+/// # Safety
+///
+/// Implementer must guarantee the lifetime provided must be the only one used
+/// to reference non-`'static` data within the structure.
+pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 
 /// Requirement for a [`Dependant`] type with the guarantee it will protect its
 /// internal state.

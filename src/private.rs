@@ -1,7 +1,7 @@
-use crate::Dependant;
+use crate::{Dependant, DependantWithLifetime};
 
 pub unsafe trait Construct<'o, O: ?Sized>: Sized {
-    type Dependant: Dependant<'static>;
+    type Dependant: Dependant + 'static;
 
     unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
 }
@@ -9,7 +9,7 @@ pub unsafe trait Construct<'o, O: ?Sized>: Sized {
 unsafe impl<'o, O, D, F> Construct<'o, O> for F
 where
     O: ?Sized + 'o,
-    D: Dependant<'o>,
+    D: DependantWithLifetime<'o>,
     F: FnOnce(&'o O) -> D + 'static,
 {
     type Dependant = D::Static;
@@ -21,7 +21,7 @@ where
 
 pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
     type Error: 'static;
-    type Dependant: Dependant<'static>;
+    type Dependant: Dependant + 'static;
 
     unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
 }
@@ -30,7 +30,7 @@ unsafe impl<'o, O, D, E, F> TryConstruct<'o, O> for F
 where
     E: 'static,
     O: ?Sized + 'o,
-    D: Dependant<'o>,
+    D: DependantWithLifetime<'o>,
     F: FnOnce(&'o O) -> Result<D, E> + 'static,
 {
     type Error = E;

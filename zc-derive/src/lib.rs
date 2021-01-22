@@ -68,7 +68,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     let ty_generic_static = static_generics.split_for_impl().1;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut dependant_impl = quote! {
-        unsafe impl #impl_dependant_generics zc::Dependant<#dependant_lifetime> for #name #ty_generics #where_clause {
+        unsafe impl #impl_dependant_generics zc::Dependant for #name #ty_generics #where_clause {
             type Static = #name #ty_generic_static;
 
             unsafe fn erase_lifetime(self) -> Self::Static {
@@ -76,6 +76,8 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
                 core::mem::transmute(self)
             }
         }
+
+        unsafe impl #impl_dependant_generics zc::DependantWithLifetime<#dependant_lifetime> for #name #ty_generics #where_clause {}
     };
     if derive_opts.guarded_impl {
         dependant_impl.extend(quote! {
