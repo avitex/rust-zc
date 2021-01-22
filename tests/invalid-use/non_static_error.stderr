@@ -17,12 +17,12 @@ error: implementation of `zc::private::TryConstruct` is not general enough
    ::: $WORKSPACE/src/lib.rs
     |
     | /     pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
-156 | |     where
-157 | |         E: 'static,
-158 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
+109 | |     where
+110 | |         E: 'static,
+111 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
 ...   |
-165 | |         }
-166 | |     }
+118 | |         }
+119 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::try_new`...
     |
     = note: ...`for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` must implement `zc::private::TryConstruct<'0, [u8]>`, for any lifetime `'0`...
