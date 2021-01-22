@@ -6,23 +6,24 @@ error: implementation of `zc::private::TryConstruct` is not general enough
     |
    ::: $WORKSPACE/src/private.rs
     |
-    | / pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
-23  | |     type Error: 'static;
-24  | |     type Dependant: Dependant + 'static;
-25  | |
-26  | |     unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
-27  | | }
+    | / pub unsafe trait TryConstruct<'o, O>: Sized
+26  | | where
+27  | |     O: ?Sized,
+28  | | {
+...   |
+32  | |     unsafe fn try_construct(self, owned: &'o O) -> Result<Self::Dependant, Self::Error>;
+33  | | }
     | |_- trait `zc::private::TryConstruct` defined here
     |
    ::: $WORKSPACE/src/lib.rs
     |
     | /     pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
-109 | |     where
-110 | |         E: 'static,
-111 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
+110 | |     where
+111 | |         E: 'static,
+112 | |         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
 ...   |
-118 | |         }
-119 | |     }
+119 | |         }
+120 | |     }
     | |_____- due to a where-clause on `Zc::<O, D>::try_new`...
     |
     = note: ...`for<'r> fn(&'r [u8]) -> std::result::Result<MyStruct<'r>, <MyStruct<'r> as TryFrom<&'r [u8]>>::Error> {_new_fn}` must implement `zc::private::TryConstruct<'0, [u8]>`, for any lifetime `'0`...

@@ -1,6 +1,9 @@
 use crate::{Dependant, DependantWithLifetime};
 
-pub unsafe trait Construct<'o, O: ?Sized>: Sized {
+pub unsafe trait Construct<'o, O>: Sized
+where
+    O: ?Sized,
+{
     type Dependant: Dependant + 'static;
 
     unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
@@ -19,7 +22,10 @@ where
     }
 }
 
-pub unsafe trait TryConstruct<'o, O: ?Sized>: Sized {
+pub unsafe trait TryConstruct<'o, O>: Sized
+where
+    O: ?Sized,
+{
     type Error: 'static;
     type Dependant: Dependant + 'static;
 
