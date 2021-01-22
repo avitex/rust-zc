@@ -77,7 +77,11 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
             }
         }
 
-        unsafe impl #impl_dependant_generics zc::DependantWithLifetime<#dependant_lifetime> for #name #ty_generics #where_clause {}
+        unsafe impl #impl_dependant_generics zc::DependantWithLifetime<#dependant_lifetime> for #name #ty_generics #where_clause {
+            unsafe fn hydrate_lifetime(erased: Self::Static) -> Self {
+                core::mem::transmute(erased)
+            }
+        }
     };
     if derive_opts.guarded_impl {
         dependant_impl.extend(quote! {

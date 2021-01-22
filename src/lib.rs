@@ -1,20 +1,20 @@
 //! Crate providing [`Zc`] for self-referential zero-copy structures.
 
-#![no_std]
-#![forbid(
-    clippy::pedantic,
-    rust_2018_idioms,
-    anonymous_parameters,
-    unused_qualifications,
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_results,
-    warnings
-)]
+// #![no_std]
+// #![forbid(
+//     clippy::pedantic,
+//     rust_2018_idioms,
+//     anonymous_parameters,
+//     unused_qualifications,
+//     //missing_docs,
+//     trivial_casts,
+//     trivial_numeric_casts,
+//     unstable_features,
+//     unused_extern_crates,
+//     unused_import_braces,
+//     unused_results,
+//     warnings
+// )]
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -36,7 +36,7 @@ pub use aliasable;
 #[cfg(feature = "derive")]
 pub use zc_derive::{Dependant, Guarded};
 
-use self::private::{Construct, TryConstruct};
+use self::private::{Construct, Map, TryConstruct};
 
 /// Zero-copy structure consisting of an [`Owner`] and a [`Dependant`].
 pub struct Zc<O: Owner, D> {
@@ -157,6 +157,17 @@ where
         unsafe { &*(value_ptr as *const T) }
     }
 
+    pub fn map<M, T, U>(self, mapper: M) -> Zc<O, U::Static>
+    where
+        T: Dependant<Static = D>,
+        U: Dependant,
+        M: for<'o> Map<'o, T, Into = U>,
+    {
+        let Self { value, storage } = self;
+        let value = unsafe { mapper.map(value).erase_lifetime() };
+        Zc { value, storage }
+    }
+
     /// Return a reference to the data [`Owner`] provides.
     ///
     /// # Example
@@ -254,7 +265,11 @@ where
 ///     }
 /// }
 ///
-/// unsafe impl<'a> zc::DependantWithLifetime<'a> for MyStruct<'a> {}
+/// unsafe impl<'a> zc::DependantWithLifetime<'a> for MyStruct<'a> {
+///     unsafe fn hydrate_lifetime(erased: Self::Static) -> Self {
+///         core::mem::transmute(erased)
+///     }
+/// }
 /// ```
 ///
 /// # Safety
@@ -282,7 +297,9 @@ pub unsafe trait Dependant: Sized + Guarded {
 ///
 /// Implementer must guarantee the lifetime provided must be the only one used
 /// to reference non-`'static` data within the structure.
-pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
+pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {
+    unsafe fn hydrate_lifetime(erased: Self::Static) -> Self;
+}
 
 /// Requirement for a [`Dependant`] type with the guarantee it will protect its
 /// internal state.

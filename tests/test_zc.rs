@@ -45,6 +45,15 @@ impl<'a> From<&'a [u8]> for StructWithBytes<'a> {
     }
 }
 
+#[derive(PartialEq, Debug, Dependant)]
+pub struct ParseResultOk<'a>(Result<&'a [u8], ()>);
+
+impl<'a> From<&'a [u8]> for ParseResultOk<'a> {
+    fn from(bytes: &'a [u8]) -> Self {
+        Self(Ok(&bytes[1..]))
+    }
+}
+
 fn construct_struct_with_bytes(bytes: &[u8]) -> StructWithBytes<'_> {
     StructWithBytes(&bytes[1..])
 }
@@ -76,6 +85,21 @@ fn test_struct_with_bytes_try_from() {
     let data = zc::try_from!(owner, StructWithBytes, [u8]).unwrap();
 
     assert_eq!(data.get::<StructWithBytes>(), &StructWithBytes(&[2, 3]));
+}
+
+#[test]
+fn test_map() {
+    fn mapper<'a>(v: StructWithBytes<'a>) -> StructWithBytes<'a> {
+        StructWithBytes(&v.0[1..])
+    }
+    let owner = vec![1, 2, 3];
+    let data = zc::from!(owner, StructWithBytes, [u8]);
+    assert_eq!(data.get::<StructWithBytes>(), &StructWithBytes(&[2, 3]));
+    let data_mapped = data.map(mapper);
+    // let data_mapped = zc::map!(data, StructWithBytes, StructWithBytes, |v| StructWithBytes(
+    //     &v.0[1..]
+    // ));
+    assert_eq!(data_mapped.get::<StructWithBytes>(), &StructWithBytes(&[3]));
 }
 
 #[test]
