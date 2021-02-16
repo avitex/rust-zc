@@ -27,14 +27,14 @@ mod r#impl;
 mod macros;
 mod private;
 
-use core::fmt;
+use core::convert::identity;
+use core::fmt::{self, Debug};
 use core::ops::Deref;
 use core::result::Result as StdResult;
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
 
-pub use self::result::Result;
 #[cfg(feature = "derive")]
 pub use zc_derive::{Dependant, Guarded};
 
@@ -212,6 +212,7 @@ where
         Owner::from_storage(self.storage)
     }
 
+    #[inline(always)]
     pub unsafe fn map_unchecked<F, U>(self, f: F) -> Zc<O, U>
     where
         F: FnOnce(D) -> U,
@@ -221,6 +222,7 @@ where
         Zc { value, storage }
     }
 
+    #[inline(always)]
     pub unsafe fn try_map_unchecked<F, U, E>(self, f: F) -> StdResult<Zc<O, U>, E>
     where
         F: FnOnce(D) -> StdResult<U, E>,
@@ -230,11 +232,11 @@ where
     }
 }
 
-impl<O, D> fmt::Debug for Zc<O, D>
+impl<O, D> Debug for Zc<O, D>
 where
     O: Owner,
-    O::Storage: fmt::Debug,
-    D: fmt::Debug,
+    O::Storage: Debug,
+    D: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Zc")
@@ -473,4 +475,48 @@ where
 /// can use the basic wrapper types provided by the [`aliasable`] crate.
 pub unsafe trait Storage: Sized + Deref + 'static {}
 
-mod result;
+///////////////////////////////////////////////////////////////////////////////
+// Result
+
+pub type Result<O, Ok, Err> = Zc<O, StdResult<Ok, Err>>;
+
+impl<O, Ok, Err> Result<O, Ok, Err>
+where
+    O: Owner,
+{
+    pub fn ok(self) -> Option<Zc<O, Ok>> {
+        unsafe { self.try_map_unchecked(identity).ok() }
+    }
+
+    pub fn err(self) -> Option<Zc<O, Err>> {
+        unsafe {
+            self.try_map_unchecked(|value| match value {
+                Ok(_) => Err(()),
+                Err(err) => Ok(err),
+            })
+            .ok()
+        }
+    }
+
+    pub fn is_ok(&self) -> bool {
+        self.value.is_ok()
+    }
+
+    pub fn is_err(&self) -> bool {
+        self.value.is_err()
+    }
+
+    pub fn unwrap(self) -> Zc<O, Ok>
+    where
+        Err: Debug,
+    {
+        unsafe { self.map_unchecked(|result| result.unwrap()) }
+    }
+
+    pub fn unwrap_err(self) -> Zc<O, Err>
+    where
+        Ok: Debug,
+    {
+        unsafe { self.map_unchecked(|result| result.unwrap_err()) }
+    }
+}
