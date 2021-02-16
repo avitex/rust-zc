@@ -9,6 +9,9 @@
 ///
 /// [22340]: https://github.com/rust-lang/rust/issues/22340
 /// [70263]: https://github.com/rust-lang/rust/issues/70263
+/// [`Zc`]: crate::Zc
+/// [`Zc::new()`]: crate::Zc::new()
+/// [`Dependant`]: crate::Dependant
 #[macro_export]
 macro_rules! from {
     ($owner:expr, $dependant:ident, $target:ty) => {{
@@ -31,6 +34,9 @@ macro_rules! from {
 /// [22340]: https://github.com/rust-lang/rust/issues/22340
 /// [70263]: https://github.com/rust-lang/rust/issues/70263
 /// [`TryFrom`]: core::convert::TryFrom
+/// [`Zc`]: crate::Zc
+/// [`Zc::try_new()`]: crate::Zc::try_new()
+/// [`Dependant`]: crate::Dependant
 #[macro_export]
 macro_rules! try_from {
     ($owner:expr, $dependant:ident, $target:ty) => {{

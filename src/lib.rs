@@ -6,7 +6,7 @@
     rust_2018_idioms,
     anonymous_parameters,
     unused_qualifications,
-    missing_docs,
+    //missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
@@ -29,10 +29,12 @@ mod private;
 
 use core::fmt;
 use core::ops::Deref;
+use core::result::Result as StdResult;
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
 
+pub use self::result::Result;
 #[cfg(feature = "derive")]
 pub use zc_derive::{Dependant, Guarded};
 
@@ -106,7 +108,7 @@ where
     ///
     /// # Errors
     /// Returns `E` if the constructor failed.
-    pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
+    pub fn try_new<C, E>(owner: O, constructor: C) -> StdResult<Self, (E, O)>
     where
         E: 'static,
         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
@@ -156,7 +158,12 @@ where
         let value_ptr: *const D = &self.value;
         unsafe { &*(value_ptr as *const T) }
     }
+}
 
+impl<O, D> Zc<O, D>
+where
+    O: Owner,
+{
     /// Return a reference to the data [`Owner`] provides.
     ///
     /// # Example
@@ -203,6 +210,23 @@ where
     /// ```
     pub fn into_owner(self) -> O {
         Owner::from_storage(self.storage)
+    }
+
+    pub unsafe fn map_unchecked<F, U>(self, f: F) -> Zc<O, U>
+    where
+        F: FnOnce(D) -> U,
+    {
+        let Self { value, storage } = self;
+        let value = f(value);
+        Zc { value, storage }
+    }
+
+    pub unsafe fn try_map_unchecked<F, U, E>(self, f: F) -> StdResult<Zc<O, U>, E>
+    where
+        F: FnOnce(D) -> StdResult<U, E>,
+    {
+        let Self { value, storage } = self;
+        f(value).map(|value| Zc { value, storage })
     }
 }
 
@@ -448,3 +472,5 @@ where
 /// to will not change) but is not aliasable (see `noalias` above). Instead we
 /// can use the basic wrapper types provided by the [`aliasable`] crate.
 pub unsafe trait Storage: Sized + Deref + 'static {}
+
+mod result;
