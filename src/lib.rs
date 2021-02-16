@@ -33,6 +33,9 @@ use core::ops::Deref;
 use core::result::Result as StdResult;
 
 #[cfg(feature = "alloc")]
+use alloc::string::String;
+
+#[cfg(feature = "alloc")]
 pub use aliasable;
 
 #[cfg(feature = "derive")]
@@ -315,11 +318,10 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 ///
 /// # Derive implementations (recommended)
 ///
-/// `Guarded` is auto-implemented for types that implement [`NoInteriorMut`], or
-/// is auto-implemented when deriving `Dependant`. If the auto-implementation
-/// fails and the type does not implement [`Copy`] see below how to manually
-/// implement `Guarded`. You may alternatively derive `Guarded` for types that
-/// are used internally by a [`Dependant`].
+/// `Guarded` is auto-implemented when deriving `Dependant`. If the
+/// auto-implementation fails and the type does not implement [`Copy`] see below
+/// how to manually implement `Guarded`. You may alternatively derive `Guarded`
+/// for types that are used internally by a [`Dependant`].
 ///
 /// ```
 /// use zc::Dependant;
@@ -334,9 +336,9 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 ///
 /// If a type implements [`Copy`] it cannot support interior mutability and
 /// therefore is a valid `Guarded` type. As impl specialization does not exist
-/// we unfortunately cannot `impl<T> NoInteriorMut for T where T: Copy {}`.
+/// we unfortunately cannot `impl<T> Guarded for T where T: Copy {}`.
 ///
-/// To use a [`Copy`] type without having to implement [`NoInteriorMut`] you can
+/// To use a [`Copy`] type without having to implement `Guarded` you can
 /// tell the derive implementation to guard based on a [`Copy`] bound for a
 /// specific field or all fields.
 ///
@@ -369,9 +371,6 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 /// If you cannot use an auto-implementation, you can disable it as shown below
 /// with `#[zc(unguarded)]`.
 ///
-/// Prefer implementing [`NoInteriorMut`] over `Guarded` if applicable to make
-/// the safety constraints easier to understand.
-///
 /// ```
 /// use zc::Dependant;
 ///
@@ -380,30 +379,23 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 /// #[zc(unguarded)]
 /// struct MyStruct<'a>(&'a ());
 ///
-/// // Implementing `Guarded` through `NoInteriorMut`.
-/// unsafe impl<'a> zc::NoInteriorMut for MyStruct<'a> {}
-///
-/// // Alternatively if we do have interior mutation but uphold
-/// // the guarantees of `Guarded` then we implement that instead.
-/// // unsafe impl<'a> zc::Guarded for MyStruct<'a> {}
+/// // We uphold the guarantees of `Guarded`.
+/// unsafe impl<'a> zc::Guarded for MyStruct<'a> {}
 /// ```
 ///
 /// # Safety
 ///
-/// If a type does not and/or can not implement [`NoInteriorMut`] this trait can
-/// be manually implemented provided the guarantee the type:
+/// This trait can be manually implemented provided the guarantee the type either:
 ///
-/// - Can safely be stored with it's lifetime erased (ie. as `'static`).
-/// - Does not provided an interface that will accept data with non-`'static`
+/// - has no interior mutability.
+///
+/// **OR**
+///
+/// - can safely be stored with it's lifetime erased (ie. as `'static`).
+/// - does not provided an interface that will accept data with non-`'static`
 ///   lifetime though a interior mutable interface.
-pub unsafe trait Guarded {}
-
-unsafe impl<T> Guarded for T where T: NoInteriorMut {}
-
-/// Implemented for types that have no interior mutability.
 ///
-/// # Safety
-/// Implementor must guarantee that the type does not have interior mutability.
+/// # Interior Mutability
 ///
 /// Types that provide interior mutability include both `!Sync` types (eg.
 /// [`RefCell<T>`]) and `Sync` types (eg. [`Mutex<T>`]).
@@ -413,7 +405,7 @@ unsafe impl<T> Guarded for T where T: NoInteriorMut {}
 /// [`Mutex<T>`]: std::sync::Mutex
 /// [`RefCell<T>`]: std::cell::RefCell
 /// [Rust Language Book]: https://doc.rust-lang.org/book/ch15-05-interior-mutability.html
-pub unsafe trait NoInteriorMut {}
+pub unsafe trait Guarded {}
 
 /// Represents the owner of data with an associated storage type.
 ///
@@ -510,13 +502,26 @@ where
     where
         Err: Debug,
     {
-        unsafe { self.map_unchecked(|result| result.unwrap()) }
+        unsafe { self.map_unchecked(StdResult::unwrap) }
+    }
+
+    #[cfg(feature = "alloc")]
+    pub fn unwrap_deferred(self) -> StdResult<Zc<O, Ok>, String>
+    where
+        Err: Debug,
+    {
+        unsafe {
+            self.try_map_unchecked(|result| match result {
+                Ok(ok) => Ok(ok),
+                Err(err) => Err(alloc::format!("{:?}", err)),
+            })
+        }
     }
 
     pub fn unwrap_err(self) -> Zc<O, Err>
     where
         Ok: Debug,
     {
-        unsafe { self.map_unchecked(|result| result.unwrap_err()) }
+        unsafe { self.map_unchecked(StdResult::unwrap_err) }
     }
 }

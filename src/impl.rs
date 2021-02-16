@@ -3,26 +3,26 @@ use core::num::{
     NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping,
 };
 
-use crate::NoInteriorMut;
+use crate::Guarded;
 
 ///////////////////////////////////////////////////////////////////////////////
-// NoInteriorMut impl
+// Guarded impl
 
-macro_rules! impl_no_interior_mut {
+macro_rules! impl_guarded {
     ($($ty:ty),*) => {
-        $(unsafe impl NoInteriorMut for $ty {})*
+        $(unsafe impl Guarded for $ty {})*
     };
 }
 
-impl_no_interior_mut!(());
-impl_no_interior_mut!(bool, char);
-impl_no_interior_mut!(f32, f64);
-impl_no_interior_mut!(isize, usize);
-impl_no_interior_mut!(u8, u16, u32, u64, u128);
-impl_no_interior_mut!(i8, i16, i32, i64, i128);
-impl_no_interior_mut!(&str, &[u8]);
+impl_guarded!(());
+impl_guarded!(bool, char);
+impl_guarded!(f32, f64);
+impl_guarded!(isize, usize);
+impl_guarded!(u8, u16, u32, u64, u128);
+impl_guarded!(i8, i16, i32, i64, i128);
+impl_guarded!(&str, &[u8]);
 
-impl_no_interior_mut!(
+impl_guarded!(
     NonZeroI8,
     NonZeroI16,
     NonZeroI32,
@@ -37,10 +37,10 @@ impl_no_interior_mut!(
     NonZeroUsize
 );
 
-unsafe impl<T: NoInteriorMut> NoInteriorMut for &T {}
-unsafe impl<T: NoInteriorMut> NoInteriorMut for Option<T> {}
-unsafe impl<T: NoInteriorMut> NoInteriorMut for Wrapping<T> {}
-unsafe impl<T: NoInteriorMut, E: NoInteriorMut> NoInteriorMut for Result<T, E> {}
+unsafe impl<T: Guarded> Guarded for &T {}
+unsafe impl<T: Guarded> Guarded for Option<T> {}
+unsafe impl<T: Guarded> Guarded for Wrapping<T> {}
+unsafe impl<T: Guarded, E: Guarded> Guarded for Result<T, E> {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // alloc
@@ -55,7 +55,7 @@ mod alloc {
 
     use aliasable::{boxed::AliasableBox, string::AliasableString, vec::AliasableVec};
 
-    use crate::{NoInteriorMut, Owner, Storage};
+    use crate::{Guarded, Owner, Storage};
 
     ///////////////////////////////////////////////////////////////////////////
     // Storage impl
@@ -92,13 +92,14 @@ mod alloc {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // NoInteriorMut impl
+    // Guarded impl
 
-    unsafe impl NoInteriorMut for String {}
-    unsafe impl<T: NoInteriorMut> NoInteriorMut for Vec<T> {}
-    unsafe impl<T: NoInteriorMut> NoInteriorMut for BTreeSet<T> {}
-    unsafe impl<T: NoInteriorMut> NoInteriorMut for BinaryHeap<T> {}
-    unsafe impl<K: NoInteriorMut, V: NoInteriorMut> NoInteriorMut for BTreeMap<K, V> {}
+    impl_guarded!(String);
+
+    unsafe impl<T: Guarded> Guarded for Vec<T> {}
+    unsafe impl<T: Guarded> Guarded for BTreeSet<T> {}
+    unsafe impl<T: Guarded> Guarded for BinaryHeap<T> {}
+    unsafe impl<K: Guarded, V: Guarded> Guarded for BTreeMap<K, V> {}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,38 +110,38 @@ mod std {
     use std::collections::{HashMap, HashSet};
     use std::hash::BuildHasher;
 
-    use crate::NoInteriorMut;
+    use crate::Guarded;
 
     ///////////////////////////////////////////////////////////////////////////
-    // NoInteriorMut impl
+    // Guarded impl
 
-    unsafe impl<T: NoInteriorMut, S: BuildHasher> NoInteriorMut for HashSet<T, S> {}
-    unsafe impl<K: NoInteriorMut, V: NoInteriorMut, S: BuildHasher> NoInteriorMut for HashMap<K, V, S> {}
+    unsafe impl<T: Guarded, S: BuildHasher> Guarded for HashSet<T, S> {}
+    unsafe impl<K: Guarded, V: Guarded, S: BuildHasher> Guarded for HashMap<K, V, S> {}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// NoInteriorMut impl for tuples and arrays
+// Guarded impl for tuples and arrays
 
-macro_rules! impl_no_interior_mut_tuple {
+macro_rules! impl_guarded_tuple {
     ($($name:ident)+) => {
-        unsafe impl< $($name: NoInteriorMut),+ > NoInteriorMut for ($($name,)+) {}
+        unsafe impl< $($name: Guarded),+ > Guarded for ($($name,)+) {}
     }
 }
 
 // FIXME: Replace with const-generics
-macro_rules! impl_no_interior_mut_array {
+macro_rules! impl_guarded_array {
     ($($n:literal)+) => {
-        $(unsafe impl<T: NoInteriorMut> NoInteriorMut for [T; $n] {})*
+        $(unsafe impl<T: Guarded> Guarded for [T; $n] {})*
     }
 }
 
-impl_no_interior_mut_tuple!(T1);
-impl_no_interior_mut_tuple!(T1 T2);
-impl_no_interior_mut_tuple!(T1 T2 T3);
-impl_no_interior_mut_tuple!(T1 T2 T3 T4);
-impl_no_interior_mut_tuple!(T1 T2 T3 T4 T5);
-impl_no_interior_mut_tuple!(T1 T2 T3 T4 T5 T6);
-impl_no_interior_mut_tuple!(T1 T2 T3 T4 T5 T6 T7);
-impl_no_interior_mut_tuple!(T1 T2 T3 T4 T5 T6 T7 T8);
+impl_guarded_tuple!(T1);
+impl_guarded_tuple!(T1 T2);
+impl_guarded_tuple!(T1 T2 T3);
+impl_guarded_tuple!(T1 T2 T3 T4);
+impl_guarded_tuple!(T1 T2 T3 T4 T5);
+impl_guarded_tuple!(T1 T2 T3 T4 T5 T6);
+impl_guarded_tuple!(T1 T2 T3 T4 T5 T6 T7);
+impl_guarded_tuple!(T1 T2 T3 T4 T5 T6 T7 T8);
 
-impl_no_interior_mut_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32);
+impl_guarded_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32);

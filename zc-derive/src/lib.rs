@@ -16,13 +16,13 @@ pub fn derive_guarded(input: TokenStream) -> TokenStream {
         Ok(opts) => opts,
         Err(err) => return TokenStream::from(err),
     };
-    let no_interior_mut_check = impl_guarded_check(&input, &derive_opts, false);
+    let guarded_check = impl_guarded_check(&input, &derive_opts, false);
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
-            fn _zc_no_interior_mut_check() {
-                #no_interior_mut_check
+            fn _zc_guarded_check() {
+                #guarded_check
             }
         }
         unsafe impl #impl_generics zc::Guarded for #name #ty_generics #where_clause {}
@@ -41,7 +41,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
     };
     let mut static_generics = input.generics.clone();
     let mut dependant_generics = input.generics.clone();
-    let no_interior_mut_check = impl_guarded_check(&input, &derive_opts, !derive_opts.guarded_impl);
+    let guarded_check = impl_guarded_check(&input, &derive_opts, !derive_opts.guarded_impl);
     let static_lifetime = Lifetime::new("'static", Span::call_site());
     let dependant_lifetime = if lifetime_count == 0 {
         let dependant_lifetime = Lifetime::new("'a", Span::call_site());
@@ -72,7 +72,7 @@ pub fn derive_dependant(input: TokenStream) -> TokenStream {
             type Static = #name #ty_generic_static;
 
             unsafe fn erase_lifetime(self) -> Self::Static {
-                #no_interior_mut_check
+                #guarded_check
                 core::mem::transmute(self)
             }
         }
