@@ -25,19 +25,20 @@ extern crate alloc;
 mod r#impl;
 // FIXME: Remove the need for macros.
 mod macros;
+mod option;
 mod private;
+mod result;
 
-use core::convert::identity;
 use core::fmt::{self, Debug};
 use core::ops::Deref;
+use core::option::Option as StdOption;
 use core::result::Result as StdResult;
-
-#[cfg(feature = "alloc")]
-use alloc::string::String;
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
 
+pub use self::option::Option;
+pub use self::result::Result;
 #[cfg(feature = "derive")]
 pub use zc_derive::{Dependant, Guarded};
 
@@ -215,7 +216,14 @@ where
         Owner::from_storage(self.storage)
     }
 
-    #[inline(always)]
+    /// Map the stored [`Dependant`] to another.
+    ///
+    /// # Safety
+    ///
+    /// The [`Dependant`] passed to the function has its lifetime erased to
+    /// `'static` and must be handled appropriately. Nothing within the
+    /// [`Dependant`] passed must be referenced from outside of the closure.
+    #[inline]
     pub unsafe fn map_unchecked<F, U>(self, f: F) -> Zc<O, U>
     where
         F: FnOnce(D) -> U,
@@ -225,13 +233,43 @@ where
         Zc { value, storage }
     }
 
-    #[inline(always)]
+    /// Try to map the stored [`Dependant`] to another.
+    ///
+    /// # Errors
+    ///
+    /// Returns any error the provided function returns.
+    ///
+    /// # Safety
+    ///
+    /// The [`Dependant`] passed to the function has its lifetime erased to
+    /// `'static` and must be handled appropriately. Nothing within the
+    /// [`Dependant`] passed must be referenced from outside of the closure,
+    /// this includes the error returned.
+    #[inline]
     pub unsafe fn try_map_unchecked<F, U, E>(self, f: F) -> StdResult<Zc<O, U>, E>
     where
         F: FnOnce(D) -> StdResult<U, E>,
     {
         let Self { value, storage } = self;
         f(value).map(|value| Zc { value, storage })
+    }
+}
+
+impl<O, T> Zc<O, StdOption<T>>
+where
+    O: Owner,
+{
+    pub fn into_option(self) -> Option<O, T> {
+        Option::from(self)
+    }
+}
+
+impl<O, Ok, Err> Zc<O, StdResult<Ok, Err>>
+where
+    O: Owner,
+{
+    pub fn into_result(self) -> Result<O, Ok, Err> {
+        Result::from(self)
     }
 }
 
@@ -466,62 +504,3 @@ where
 /// to will not change) but is not aliasable (see `noalias` above). Instead we
 /// can use the basic wrapper types provided by the [`aliasable`] crate.
 pub unsafe trait Storage: Sized + Deref + 'static {}
-
-///////////////////////////////////////////////////////////////////////////////
-// Result
-
-pub type Result<O, Ok, Err> = Zc<O, StdResult<Ok, Err>>;
-
-impl<O, Ok, Err> Result<O, Ok, Err>
-where
-    O: Owner,
-{
-    pub fn ok(self) -> Option<Zc<O, Ok>> {
-        unsafe { self.try_map_unchecked(identity).ok() }
-    }
-
-    pub fn err(self) -> Option<Zc<O, Err>> {
-        unsafe {
-            self.try_map_unchecked(|value| match value {
-                Ok(_) => Err(()),
-                Err(err) => Ok(err),
-            })
-            .ok()
-        }
-    }
-
-    pub fn is_ok(&self) -> bool {
-        self.value.is_ok()
-    }
-
-    pub fn is_err(&self) -> bool {
-        self.value.is_err()
-    }
-
-    pub fn unwrap(self) -> Zc<O, Ok>
-    where
-        Err: Debug,
-    {
-        unsafe { self.map_unchecked(StdResult::unwrap) }
-    }
-
-    #[cfg(feature = "alloc")]
-    pub fn unwrap_deferred(self) -> StdResult<Zc<O, Ok>, String>
-    where
-        Err: Debug,
-    {
-        unsafe {
-            self.try_map_unchecked(|result| match result {
-                Ok(ok) => Ok(ok),
-                Err(err) => Err(alloc::format!("{:?}", err)),
-            })
-        }
-    }
-
-    pub fn unwrap_err(self) -> Zc<O, Err>
-    where
-        Ok: Debug,
-    {
-        unsafe { self.map_unchecked(StdResult::unwrap_err) }
-    }
-}
