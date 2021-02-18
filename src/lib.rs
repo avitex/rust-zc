@@ -25,20 +25,14 @@ extern crate alloc;
 mod r#impl;
 // FIXME: Remove the need for macros.
 mod macros;
-mod option;
 mod private;
-mod result;
 
-use core::fmt::{self, Debug};
+use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
-use core::option::Option as StdOption;
-use core::result::Result as StdResult;
 
 #[cfg(feature = "alloc")]
 pub use aliasable;
 
-pub use self::option::Option;
-pub use self::result::Result;
 #[cfg(feature = "derive")]
 pub use zc_derive::Dependant;
 
@@ -112,7 +106,7 @@ where
     ///
     /// # Errors
     /// Returns `E` if the constructor failed.
-    pub fn try_new<C, E>(owner: O, constructor: C) -> StdResult<Self, (E, O)>
+    pub fn try_new<C, E>(owner: O, constructor: C) -> Result<Self, (E, O)>
     where
         E: 'static,
         C: for<'o> TryConstruct<'o, <O::Storage as Deref>::Target, Error = E, Dependant = D>,
@@ -222,7 +216,7 @@ where
     ///
     /// The [`Dependant`] passed to the function has its lifetime erased to
     /// `'static` and must be handled appropriately. Nothing within the
-    /// [`Dependant`] passed must be referenced from outside of the closure.
+    /// [`Dependant`] passed can be referenced from outside of the closure.
     #[inline]
     pub unsafe fn map_unchecked<F, U>(self, f: F) -> Zc<O, U>
     where
@@ -243,33 +237,86 @@ where
     ///
     /// The [`Dependant`] passed to the function has its lifetime erased to
     /// `'static` and must be handled appropriately. Nothing within the
-    /// [`Dependant`] passed must be referenced from outside of the closure,
+    /// [`Dependant`] passed can be referenced from outside of the closure,
     /// this includes the error returned.
     #[inline]
-    pub unsafe fn try_map_unchecked<F, U, E>(self, f: F) -> StdResult<Zc<O, U>, E>
+    pub unsafe fn try_map_unchecked<F, U, E>(self, f: F) -> Result<Zc<O, U>, E>
     where
-        F: FnOnce(D) -> StdResult<U, E>,
+        F: FnOnce(D) -> Result<U, E>,
     {
         let Self { value, storage } = self;
         f(value).map(|value| Zc { value, storage })
     }
 }
 
-impl<O, T> Zc<O, StdOption<T>>
+impl<O, T> Zc<O, Option<T>>
 where
     O: Owner,
 {
-    pub fn into_option(self) -> Option<O, T> {
-        Option::from(self)
+    /// Decomposes `self` into an option.
+    #[inline]
+    pub fn into_option(self) -> Option<Zc<O, T>> {
+        self.into()
     }
 }
 
-impl<O, Ok, Err> Zc<O, StdResult<Ok, Err>>
+impl<O, Ok, Err> Zc<O, Result<Ok, Err>>
 where
     O: Owner,
 {
-    pub fn into_result(self) -> Result<O, Ok, Err> {
-        Result::from(self)
+    /// Decomposes `self` into a result.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Zc<O, Err>` if the inner dependant is `Result::Err`.
+    #[inline]
+    pub fn into_result(self) -> Result<Zc<O, Ok>, Zc<O, Err>> {
+        self.into()
+    }
+}
+
+impl<O, T> From<Zc<O, Option<T>>> for Option<Zc<O, T>>
+where
+    O: Owner,
+{
+    #[inline]
+    fn from(zc: Zc<O, Option<T>>) -> Self {
+        match zc.value {
+            None => None,
+            Some(value) => Some(Zc {
+                value,
+                storage: zc.storage,
+            }),
+        }
+    }
+}
+
+impl<O, Ok, Err> From<Zc<O, Result<Ok, Err>>> for Result<Zc<O, Ok>, Zc<O, Err>>
+where
+    O: Owner,
+{
+    #[inline]
+    fn from(zc: Zc<O, Result<Ok, Err>>) -> Self {
+        match zc.value {
+            Ok(value) => Ok(Zc {
+                value,
+                storage: zc.storage,
+            }),
+            Err(value) => Err(Zc {
+                value,
+                storage: zc.storage,
+            }),
+        }
+    }
+}
+
+impl<O, D> Display for Zc<O, D>
+where
+    O: Owner,
+    D: Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.value, f)
     }
 }
 
@@ -292,7 +339,7 @@ where
 ///
 /// # Derive implementations (recommended)
 ///
-/// It is recommeneded not to implement this manually and instead use the
+/// It is recommended not to implement this manually and instead use the
 /// provided proc-macro as show below.
 ///
 /// ```
