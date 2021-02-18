@@ -6,7 +6,7 @@
     rust_2018_idioms,
     anonymous_parameters,
     unused_qualifications,
-    //missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unstable_features,
