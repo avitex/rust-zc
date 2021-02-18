@@ -7,23 +7,23 @@ error: implementation of `zc::private::Construct` is not general enough
   ::: $WORKSPACE/src/private.rs
    |
    | / pub unsafe trait Construct<'o, O>: Sized
-4  | | where
-5  | |     O: ?Sized,
-6  | | {
+13 | | where
+14 | |     O: ?Sized,
+15 | | {
 ...  |
-9  | |     unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
-10 | | }
+18 | |     unsafe fn construct(self, owned: &'o O) -> Self::Dependant;
+19 | | }
    | |_- trait `zc::private::Construct` defined here
    |
   ::: $WORKSPACE/src/lib.rs
    |
    | /     pub fn new<C>(owner: O, constructor: C) -> Self
-79 | |     where
-80 | |         C: for<'o> Construct<'o, <O::Storage as Deref>::Target, Dependant = D>,
-81 | |     {
+80 | |     where
+81 | |         C: for<'o> Construct<'o, <O::Storage as Deref>::Target, Dependant = D>,
+82 | |     {
 ...  |
-86 | |         Self { storage, value }
-87 | |     }
+87 | |         Self { storage, value }
+88 | |     }
    | |_____- due to a where-clause on `Zc::<O, D>::new`...
    |
    = note: ...`fn(&'static [u8]) -> MyStruct<'static> {steal_owned_data}` must implement `zc::private::Construct<'0, [u8]>`, for any lifetime `'0`...

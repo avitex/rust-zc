@@ -40,7 +40,7 @@ pub use aliasable;
 pub use self::option::Option;
 pub use self::result::Result;
 #[cfg(feature = "derive")]
-pub use zc_derive::{Dependant, Guarded};
+pub use zc_derive::Dependant;
 
 use self::private::{Construct, TryConstruct};
 
@@ -55,7 +55,7 @@ pub struct Zc<O: Owner, D> {
 impl<O, D> Zc<O, D>
 where
     O: Owner,
-    D: Dependant + 'static,
+    D: Dependant<'static>,
 {
     /// Construct a new zero-copied structure given an [`Owner`] and a
     /// function for constructing the [`Dependant`].
@@ -157,10 +157,10 @@ where
     // See: https://github.com/rust-lang/rust/issues/44265
     pub fn get<'a, T>(&'a self) -> &T
     where
-        T: DependantWithLifetime<'a, Static = D>,
+        T: Dependant<'a, Static = D>,
     {
         let value_ptr: *const D = &self.value;
-        unsafe { &*(value_ptr as *const T) }
+        unsafe { &*value_ptr.cast::<T>() }
     }
 }
 
@@ -287,7 +287,8 @@ where
     }
 }
 
-/// Implemented for [`Guarded`] types that use data provided by an [`Owner`].
+/// Implemented for types that use data provided by an [`Owner`] and guarantee
+/// that internal state is protected.
 ///
 /// # Derive implementations (recommended)
 ///
@@ -303,82 +304,14 @@ where
 /// }
 /// ```
 ///
-/// # Manual implementations
-///
-/// If you wish not to use the provided proc-macro you implement as shown:
-///
-/// ```
-/// use zc::Guarded;
-///
-/// #[derive(Guarded)]
-/// struct MyStruct<'a>(&'a [u8]);
-///
-/// unsafe impl<'a> zc::Dependant for MyStruct<'a> {
-///     type Static = MyStruct<'static>;
-///
-///     unsafe fn erase_lifetime(self) -> Self::Static {
-///         core::mem::transmute(self)
-///     }
-/// }
-///
-/// unsafe impl<'a> zc::DependantWithLifetime<'a> for MyStruct<'a> {}
-/// ```
-///
-/// # Safety
-///
-/// Implementer must guarantee:
-///
-/// 1. The structure only requires a single lifetime.
-/// 2. `Self::Static` must be the same type but with a `'static` lifetime.
-pub unsafe trait Dependant: Sized + Guarded {
-    /// Always the exact same structure as `Self` but instead with a `'static`
-    /// lifetime.
-    type Static: Dependant + 'static;
-
-    /// Erases the `Dependant`'s lifetime by returning a static variant.
-    ///
-    /// # Safety
-    ///
-    /// The value returned is for use by the `Zc` structure only.
-    unsafe fn erase_lifetime(self) -> Self::Static;
-}
-
-/// A [`Dependant`] with a lifetime bound for its referenced data.
-///
-/// # Safety
-///
-/// Implementer must guarantee the lifetime provided must be the only one used
-/// to reference non-`'static` data within the structure.
-pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
-
-/// Requirement for a [`Dependant`] type with the guarantee it will protect its
-/// internal state.
-///
-/// # Derive implementations (recommended)
-///
-/// `Guarded` is auto-implemented when deriving `Dependant`. If the
-/// auto-implementation fails and the type does not implement [`Copy`] see below
-/// how to manually implement `Guarded`. You may alternatively derive `Guarded`
-/// for types that are used internally by a [`Dependant`].
-///
-/// ```
-/// use zc::Dependant;
-///
-/// #[derive(Dependant)]
-/// pub struct MyStruct<'a> {
-///     field: &'a [u8],
-/// }
-/// ```
-///
 /// # Derive implementations for `Copy`
 ///
 /// If a type implements [`Copy`] it cannot support interior mutability and
-/// therefore is a valid `Guarded` type. As impl specialization does not exist
-/// we unfortunately cannot `impl<T> Guarded for T where T: Copy {}`.
+/// therefore is a valid `Dependant` type.
 ///
-/// To use a [`Copy`] type without having to implement `Guarded` you can
-/// tell the derive implementation to guard based on a [`Copy`] bound for a
-/// specific field or all fields.
+/// To use a [`Copy`] type without having to implement `Dependant` you can tell
+/// the derive implementation to check based on a [`Copy`] bound for a specific
+/// field or all fields.
 ///
 /// ```
 /// use zc::Dependant;
@@ -389,41 +322,41 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 /// #[derive(Dependant)]
 /// pub struct StructWithCopy<'a> {
 ///     // This field has a `Copy` bound.
-///     #[zc(guard = "Copy")]
+///     #[zc(check = "Copy")]
 ///     field_a: &'a CopyType,
-///     // This field has the standard `Guarded` bound.
+///     // This field has the standard `Dependant` bound.
 ///     field_b: u8,
 /// }
 ///
 /// // All fields in this struct have the `Copy` bound.
 /// #[derive(Dependant)]
-/// #[zc(guard = "Copy")]
+/// #[zc(check = "Copy")]
 /// pub struct StructWithAllCopy<'a> {
 ///     field_a: &'a CopyType,
 ///     field_b: u8,
 /// }
 /// ```
 ///
-/// # Manual implementation
+/// # Manual implementations
 ///
-/// If you cannot use an auto-implementation, you can disable it as shown below
-/// with `#[zc(unguarded)]`.
+/// If you wish not to use the provided proc-macro you implement as shown:
 ///
 /// ```
-/// use zc::Dependant;
+/// struct MyStruct<'a>(&'a [u8]);
 ///
-/// #[derive(Dependant)]
-/// // Disable the impl of `Guarded`
-/// #[zc(unguarded)]
-/// struct MyStruct<'a>(&'a ());
-///
-/// // We uphold the guarantees of `Guarded`.
-/// unsafe impl<'a> zc::Guarded for MyStruct<'a> {}
+/// unsafe impl<'a> zc::Dependant<'a> for MyStruct<'a> {
+///     type Static = MyStruct<'static>;
+/// }
 /// ```
 ///
 /// # Safety
 ///
-/// This trait can be manually implemented provided the guarantee the type either:
+/// Implementer must guarantee:
+///
+/// - the structure only requires a single lifetime.
+/// - `Self::Static` must be the same type but with a `'static` lifetime.
+///
+/// And in addition the structure:
 ///
 /// - has no interior mutability.
 ///
@@ -443,7 +376,11 @@ pub unsafe trait DependantWithLifetime<'a>: Dependant + 'a {}
 /// [`Mutex<T>`]: std::sync::Mutex
 /// [`RefCell<T>`]: std::cell::RefCell
 /// [Rust Language Book]: https://doc.rust-lang.org/book/ch15-05-interior-mutability.html
-pub unsafe trait Guarded {}
+pub unsafe trait Dependant<'a>: Sized + 'a {
+    /// Always the exact same structure as `Self` but instead with a `'static`
+    /// lifetime.
+    type Static: Dependant<'static>;
+}
 
 /// Represents the owner of data with an associated storage type.
 ///

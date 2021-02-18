@@ -1,7 +1,7 @@
-error[E0277]: the trait bound `Mutex<&'a [u8]>: Guarded` is not satisfied
+error[E0277]: the trait bound `Mutex<&'a [u8]>: Dependant<'a>` is not satisfied
  --> $DIR/dependant_interior_mut.rs:6:32
   |
 5 | #[derive(Debug, Dependant)]
-  |                 --------- required by this bound in `guarded_check`
+  |                 --------- required by this bound in `dependant_check`
 6 | pub struct StructWithBytes<'a>(Mutex<&'a [u8]>);
-  |                                ^^^^^^^^^^^^^^^ the trait `Guarded` is not implemented for `Mutex<&'a [u8]>`
+  |                                ^^^^^^^^^^^^^^^ the trait `Dependant<'a>` is not implemented for `Mutex<&'a [u8]>`

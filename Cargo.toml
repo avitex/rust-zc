@@ -20,12 +20,12 @@ alloc = ["aliasable"]
 derive = ["zc-derive"]
 
 [dependencies]
-zc-derive = { version = "0.3", optional = true }
+zc-derive = { path = "./zc-derive", version = "0.3", optional = true }
 aliasable = { version = "0.1.3", optional = true }
 
 [dev-dependencies]
 trybuild = "1.0"
-dangerous = "0.6"
+dangerous = "0.8"
 once_cell = "1.5"
 
 [workspace]

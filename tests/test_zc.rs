@@ -1,10 +1,10 @@
 use zc::aliasable::{boxed::AliasableBox, vec::AliasableVec};
-use zc::{Dependant, Guarded, Zc};
+use zc::{Dependant, Zc};
 
 #[derive(Dependant)]
 pub struct StructWithNoLifetime;
 
-#[derive(Guarded)]
+#[derive(Dependant)]
 pub struct ChildType<'a>(&'a ());
 
 #[derive(Dependant)]
@@ -16,14 +16,14 @@ pub struct CopyType;
 #[derive(Dependant)]
 #[allow(dead_code)]
 pub struct StructWithCopy<'a> {
-    #[zc(guard = "Copy")]
+    #[zc(check = "Copy")]
     field_a: &'a CopyType,
     field_b: (),
 }
 
 #[derive(Dependant)]
 #[allow(dead_code)]
-#[zc(guard = "Copy")]
+#[zc(check = "Copy")]
 pub struct StructWithAllCopy<'a> {
     field_a: &'a CopyType,
     field_b: (),

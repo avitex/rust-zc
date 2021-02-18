@@ -1,5 +1,0 @@
-error: attempting to disable `zc::Guarded` implementation while deriving `zc::Guarded`
- --> $DIR/unguarded_on_guarded.rs:4:1
-  |
-4 | #[zc(unguarded)]
-  | ^

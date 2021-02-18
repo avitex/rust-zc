@@ -1,28 +1,19 @@
-use dangerous::{Expected, Reader};
-use zc::Dependant;
+use dangerous::{BytesReader, Fatal, Input};
+use zc::Zc;
 
-#[derive(Dependant, Debug)]
-#[zc(unguarded)]
-pub struct ParsedResult<'a>(Result<Vec<&'a str>, Expected<'a>>);
-
-// This and `zc(unguarded)` are not needed with the `zc` feature enabled with
-// the dangerous crate.
-unsafe impl<'a> zc::Guarded for ParsedResult<'a> {}
-
-impl<'a> From<&'a [u8]> for ParsedResult<'a> {
-    fn from(bytes: &'a [u8]) -> Self {
-        let input = dangerous::input(bytes);
-        Self(input.read_all(parse))
-    }
+fn parse_from_bytes(bytes: &[u8]) -> Result<Vec<&str>, ()> {
+    dangerous::input(bytes)
+        .read_all(parse)
+        .map_err(|_: Fatal| ())
 }
 
 fn main() {
     let buf = Vec::from(&b"thisisatag,thisisanothertag"[..]);
-    let parsed = zc::from!(buf, ParsedResult, [u8]);
-    dbg!(parsed);
+    let parsed = Zc::new(buf, parse_from_bytes);
+    dbg!(parsed.into_result().unwrap());
 }
 
-fn parse<'i, E>(r: &mut Reader<'i, E>) -> Result<Vec<&'i str>, E>
+fn parse<'i, E>(r: &mut BytesReader<'i, E>) -> Result<Vec<&'i str>, E>
 where
     E: dangerous::Error<'i>,
 {
@@ -30,7 +21,7 @@ where
     loop {
         let s = r.take_while(|b| b != b',').to_dangerous_str::<E>()?;
         parts.push(s);
-        if !r.consume_u8_opt(b',') {
+        if !r.consume_opt(b',') {
             return Ok(parts);
         }
     }
