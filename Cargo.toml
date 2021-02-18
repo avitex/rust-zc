@@ -1,6 +1,6 @@
 [package]
 name = "zc"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["avitex <avitex@wfxlabs.com>"]
 edition = "2018"
 description = "Self-referential zero-copy structure"
@@ -20,7 +20,7 @@ alloc = ["aliasable"]
 derive = ["zc-derive"]
 
 [dependencies]
-zc-derive = { version = "0.3", optional = true }
+zc-derive = { version = "0.4", optional = true }
 aliasable = { version = "0.1.3", optional = true }
 
 [dev-dependencies]

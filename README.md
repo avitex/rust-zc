@@ -9,7 +9,7 @@
 Documentation hosted on [docs.rs](https://docs.rs/zc).
 
 ```toml
-zc = "0.3"
+zc = "0.4"
 ```
 
 ## Usage
