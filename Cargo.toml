@@ -20,7 +20,7 @@ alloc = ["aliasable"]
 derive = ["zc-derive"]
 
 [dependencies]
-zc-derive = { path = "./zc-derive", version = "0.3", optional = true }
+zc-derive = { version = "0.3", optional = true }
 aliasable = { version = "0.1.3", optional = true }
 
 [dev-dependencies]
