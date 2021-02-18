@@ -11,7 +11,7 @@ use crate::Dependant;
 macro_rules! impl_dependant_ref {
     ($($ty:ty),*) => {
         $(
-            unsafe impl<'a> Dependant<'a> for &'a $ty {
+            unsafe impl<'o> Dependant<'o> for &'o $ty {
                 type Static = &'static $ty;
             }
         )*
@@ -21,7 +21,7 @@ macro_rules! impl_dependant_ref {
 macro_rules! impl_dependant {
     ($($ty:ty),*) => {
         $(
-            unsafe impl<'a> Dependant<'a> for $ty {
+            unsafe impl<'o> Dependant<'o> for $ty {
                 type Static = $ty;
             }
         )*
@@ -52,22 +52,22 @@ impl_dependant!(
     NonZeroUsize
 );
 
-unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for &'a T {
+unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for &'o T {
     type Static = &'static T::Static;
 }
 
-unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for Option<T> {
+unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for Option<T> {
     type Static = Option<T::Static>;
 }
 
-unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for Wrapping<T> {
+unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for Wrapping<T> {
     type Static = Wrapping<T::Static>;
 }
 
-unsafe impl<'a, T, E> Dependant<'a> for Result<T, E>
+unsafe impl<'o, T, E> Dependant<'o> for Result<T, E>
 where
-    T: Dependant<'a>,
-    E: Dependant<'a>,
+    T: Dependant<'o>,
+    E: Dependant<'o>,
 {
     type Static = Result<T::Static, E::Static>;
 }
@@ -126,22 +126,22 @@ mod alloc {
 
     impl_dependant!(String);
 
-    unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for Vec<T> {
+    unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for Vec<T> {
         type Static = Vec<T::Static>;
     }
 
-    unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for BTreeSet<T> {
+    unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for BTreeSet<T> {
         type Static = BTreeSet<T::Static>;
     }
 
-    unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for BinaryHeap<T> {
+    unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for BinaryHeap<T> {
         type Static = BinaryHeap<T::Static>;
     }
 
-    unsafe impl<'a, K, V> Dependant<'a> for BTreeMap<K, V>
+    unsafe impl<'o, K, V> Dependant<'o> for BTreeMap<K, V>
     where
-        K: Dependant<'a>,
-        V: Dependant<'a>,
+        K: Dependant<'o>,
+        V: Dependant<'o>,
     {
         type Static = BTreeMap<K::Static, V::Static>;
     }
@@ -160,18 +160,18 @@ mod std {
     ///////////////////////////////////////////////////////////////////////////
     // Dependant impl
 
-    unsafe impl<'a, T, S> Dependant<'a> for HashSet<T, S>
+    unsafe impl<'o, T, S> Dependant<'o> for HashSet<T, S>
     where
-        T: Dependant<'a>,
+        T: Dependant<'o>,
         S: BuildHasher + 'static,
     {
         type Static = HashSet<T::Static, S>;
     }
 
-    unsafe impl<'a, K, V, S> Dependant<'a> for HashMap<K, V, S>
+    unsafe impl<'o, K, V, S> Dependant<'o> for HashMap<K, V, S>
     where
-        K: Dependant<'a>,
-        V: Dependant<'a>,
+        K: Dependant<'o>,
+        V: Dependant<'o>,
         S: BuildHasher + 'static,
     {
         type Static = HashMap<K::Static, V::Static, S>;
@@ -183,7 +183,7 @@ mod std {
 
 macro_rules! impl_dependant_tuple {
     ($($name:ident)+) => {
-        unsafe impl<'a, $($name: Dependant<'a>),+ > Dependant<'a> for ($($name,)+) {
+        unsafe impl<'o, $($name: Dependant<'o>),+ > Dependant<'o> for ($($name,)+) {
             type Static = ($($name::Static,)+);
         }
     }
@@ -192,7 +192,7 @@ macro_rules! impl_dependant_tuple {
 // FIXME: Replace with const-generics
 macro_rules! impl_dependant_array {
     ($($n:literal)+) => {
-        $(unsafe impl<'a, T: Dependant<'a>> Dependant<'a> for [T; $n] {
+        $(unsafe impl<'o, T: Dependant<'o>> Dependant<'o> for [T; $n] {
             type Static = [T::Static; $n];
         })*
     }

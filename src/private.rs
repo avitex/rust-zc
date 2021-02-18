@@ -2,7 +2,7 @@ use core::{mem, ptr};
 
 use crate::Dependant;
 
-unsafe fn erase_lifetime<'a, D: Dependant<'a>>(dependant: D) -> D::Static {
+unsafe fn erase_lifetime<'o, D: Dependant<'o>>(dependant: D) -> D::Static {
     let self_ptr: *const D = &dependant;
     let erased = ptr::read(self_ptr.cast::<D::Static>());
     mem::forget(dependant);

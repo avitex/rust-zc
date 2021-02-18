@@ -391,7 +391,7 @@ where
 /// ```
 /// struct MyStruct<'a>(&'a [u8]);
 ///
-/// unsafe impl<'a> zc::Dependant<'a> for MyStruct<'a> {
+/// unsafe impl<'o> zc::Dependant<'o> for MyStruct<'o> {
 ///     type Static = MyStruct<'static>;
 /// }
 /// ```
@@ -423,7 +423,7 @@ where
 /// [`Mutex<T>`]: std::sync::Mutex
 /// [`RefCell<T>`]: std::cell::RefCell
 /// [Rust Language Book]: https://doc.rust-lang.org/book/ch15-05-interior-mutability.html
-pub unsafe trait Dependant<'a>: Sized + 'a {
+pub unsafe trait Dependant<'o>: Sized + 'o {
     /// Always the exact same structure as `Self` but instead with a `'static`
     /// lifetime.
     type Static: Dependant<'static>;
